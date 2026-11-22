@@ -1,0 +1,17 @@
+# Local build and publish output
+bin/
+obj/
+dist/
+dist-*/
+publish/
+installer-output/
+*.user
+*.suo
+
+# Local diagnostics and reference captures
+auto-connect-check.png
+referencia/
+*.log
+
+# Local-only installer tooling
+tools/

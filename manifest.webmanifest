@@ -1,0 +1,13 @@
+{
+  "name": "Gree Control",
+  "short_name": "Gree Control",
+  "description": "Controle local do ar-condicionado Gree",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#10131a",
+  "theme_color": "#171c2a",
+  "icons": [
+    {"src":"/gree-icon.png","sizes":"180x180","type":"image/png","purpose":"any"},
+    {"src":"/gree-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"maskable"}
+  ]
+}

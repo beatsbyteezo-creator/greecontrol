@@ -1,0 +1,70 @@
+name: Windows installer and release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - VERSION
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Read release version
+        id: release_version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "VERSION deve estar no formato MAJOR.MINOR.PATCH; recebido: $version" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Set up bundled Node.js runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          architecture: x64
+
+      - name: Publish self-contained Windows app
+        shell: pwsh
+        run: |
+          $version = "${{ steps.release_version.outputs.version }}"
+          dotnet publish .\GreeControl.Native\GreeControl.Native.csproj -c Release -r win-x64 --self-contained true -p:Version=$version -p:AssemblyVersion="$version.0" -p:FileVersion="$version.0" -o .\publish
+          if ($LASTEXITCODE -ne 0) { throw 'dotnet publish falhou.' }
+          Copy-Item (Get-Command node.exe).Source .\publish\node.exe
+          New-Item -ItemType Directory -Force .\installer-output | Out-Null
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile .\installer-output\MicrosoftEdgeWebView2Setup.exe
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $env:APP_VERSION = "${{ steps.release_version.outputs.version }}"
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          & $iscc .\installer\GreeControl.iss
+          if ($LASTEXITCODE -ne 0) { throw 'A criação do instalador falhou.' }
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Gree Control v${{ steps.release_version.outputs.version }}
+          tag_name: v${{ steps.release_version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: true
+          files: installer-output/GreeControl-Setup-x64.exe
