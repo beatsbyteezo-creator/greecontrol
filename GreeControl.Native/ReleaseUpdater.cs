@@ -19,7 +19,7 @@ internal static class ReleaseUpdater
         return client;
     }
 
-    public static async Task CheckAndInstallAsync(Action beginShutdown)
+    public static async Task CheckAndInstallAsync(Action<string> updateStatus, Action beginShutdown)
     {
         try
         {
@@ -32,6 +32,8 @@ internal static class ReleaseUpdater
                 !Version.TryParse(Application.ProductVersion.Split('+')[0], out var current) || latest <= current)
                 return;
 
+            updateStatus($"Atualiza��o {latest} encontrada. Baixando.");
+
             if (!root.TryGetProperty("assets", out var assets)) return;
             var asset = assets.EnumerateArray().FirstOrDefault(item =>
                 item.TryGetProperty("name", out var name) && name.GetString() == InstallerAsset);
@@ -40,7 +42,11 @@ internal static class ReleaseUpdater
                 !asset.TryGetProperty("digest", out var digestValue)) return;
             var digest = digestValue.GetString();
             var url = urlValue.GetString();
-            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(digest) || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)) return;
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(digest) || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+            {
+                updateStatus("A atualiza��o foi encontrada, mas o instalador ainda n�o est� dispon�vel.");
+                return;
+            }
 
             var updateDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GreeControl", "Updates");
             Directory.CreateDirectory(updateDirectory);
@@ -61,9 +67,13 @@ internal static class ReleaseUpdater
                         System.Text.Encoding.ASCII.GetBytes(digest.ToLowerInvariant())))
                 {
                     File.Delete(installerPath);
+                    updateStatus("N�o foi poss�vel validar o instalador. Nenhuma altera��o foi feita.");
                     return;
                 }
             }
+
+            updateStatus($"Atualiza��o {latest} baixada. Instalando agora.");
+            await Task.Delay(1400);
 
             var installer = new ProcessStartInfo(installerPath,
                 "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS")
@@ -72,9 +82,11 @@ internal static class ReleaseUpdater
                 WorkingDirectory = updateDirectory
             };
             if (Process.Start(installer) is not null) beginShutdown();
+            else updateStatus("O instalador n�o p�de ser iniciado. Tente novamente mais tarde.");
         }
         catch (Exception error)
         {
+            updateStatus("N�o foi poss�vel buscar a atualiza��o agora. O Gree Control continua aberto.");
             try
             {
                 var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GreeControl", "update.log");
@@ -85,3 +97,4 @@ internal static class ReleaseUpdater
         }
     }
 }
+
