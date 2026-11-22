@@ -20,12 +20,12 @@ O arquivo `Abrir Gree Control.bat` é um lançador de desenvolvimento local e re
 
 ## Criar uma versão
 
-Altere `VERSION` para a próxima versão estável (formato `MAJOR.MINOR.PATCH`) e envie a alteração à branch principal. Por exemplo, para publicar a versão `1.0.1`:
+Altere `VERSION` para a próxima versão estável (formato `MAJOR.MINOR.PATCH`) e envie a alteração à branch principal. Por exemplo, para publicar a versão `1.2.1`:
 
 ```powershell
-Set-Content VERSION '1.0.1'
+Set-Content VERSION '1.2.1'
 git add VERSION
-git commit -m "Release v1.0.1"
+git commit -m "Release v1.2.1"
 git push
 ```
 

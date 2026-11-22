@@ -19,14 +19,6 @@ public sealed class Form1 : Form
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AnimateWindow(IntPtr hwnd, uint time, uint flags);
-
-    private const uint AnimateSlide = 0x00040000;
-    private const uint AnimateVerticalNegative = 0x00000008;
-    private const uint AnimateActivate = 0x00020000;
-
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect
     {
@@ -41,9 +33,21 @@ public sealed class Form1 : Form
     private Process? bridge;
     private bool reallyExit;
     private readonly System.Windows.Forms.Timer assistantMonitor = new() { Interval = 30_000 };
+    private readonly System.Windows.Forms.Timer windowMotion = new() { Interval = 15 };
+    private readonly Stopwatch windowMotionWatch = new();
     private AssistantToastForm? assistantToast;
     private bool webPageReady;
     private bool openAssistantWhenReady;
+    private bool exitAfterMotion;
+    private WindowMotionState windowMotionState;
+    private Point motionStart;
+    private Point motionTarget;
+    private Point motionAnchor;
+    private double opacityStart;
+    private double opacityTarget;
+    private int motionDuration;
+
+    private enum WindowMotionState { None, Opening, Closing }
 
     public Form1()
     {
@@ -60,9 +64,10 @@ public sealed class Form1 : Form
         Icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
         var trayMenu = new ContextMenuStrip();
         trayMenu.Items.Add("Abrir Gree Control", null, (_, _) => RestoreFromTray());
-        trayMenu.Items.Add("Sair", null, (_, _) => { reallyExit = true; trayIcon.Visible = false; Close(); });
+        trayMenu.Items.Add("Sair", null, (_, _) => ExitFromTray());
         trayIcon = new NotifyIcon { Text = "Gree Control", Icon = Icon, ContextMenuStrip = trayMenu, Visible = true };
-        trayIcon.DoubleClick += (_, _) => RestoreFromTray();
+        trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) RestoreFromTray(); };
+        windowMotion.Tick += AnimateWindowFrame;
         assistantMonitor.Tick += (_, _) =>
         {
             if (browser.CoreWebView2 is not null)
@@ -70,7 +75,7 @@ public sealed class Form1 : Form
         };
         Controls.Add(browser);
         Load += LoadApp;
-        FormClosed += (_, _) => { assistantMonitor.Stop(); assistantMonitor.Dispose(); assistantToast?.Close(); trayIcon.Visible = false; trayIcon.Dispose(); StopBridge(); };
+        FormClosed += (_, _) => { assistantMonitor.Stop(); assistantMonitor.Dispose(); windowMotion.Stop(); windowMotion.Dispose(); assistantToast?.Close(); trayIcon.Visible = false; trayIcon.Dispose(); StopBridge(); };
         KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) HideToTray(); };
     }
 
@@ -87,24 +92,98 @@ public sealed class Form1 : Form
 
     private void HideToTray()
     {
-        Hide();
+        if (!Visible) return;
+        if (!exitAfterMotion) StartWindowMotion(opening: false);
     }
 
     private void RestoreFromTray()
     {
         var wasHidden = !Visible;
         WindowState = FormWindowState.Normal;
-        var area = Screen.PrimaryScreen?.WorkingArea ?? Screen.FromPoint(Cursor.Position).WorkingArea;
-        Location = new Point(area.Right - Width, area.Bottom - Height);
+        exitAfterMotion = false;
+        var anchor = GetWindowAnchor();
         if (wasHidden)
         {
-            if (!AnimateWindow(Handle, 280, AnimateSlide | AnimateVerticalNegative | AnimateActivate)) Show();
+            Location = new Point(anchor.X, anchor.Y + 48);
+            Opacity = .08;
+            Show();
+            StartWindowMotion(opening: true, anchor);
         }
-        else Show();
-        if (!Visible) Show();
+        else if (windowMotionState == WindowMotionState.Closing)
+            StartWindowMotion(opening: true, anchor);
         BringToFront();
         Activate();
         browser.Focus();
+    }
+
+    private Point GetWindowAnchor()
+    {
+        var area = Screen.PrimaryScreen?.WorkingArea ?? Screen.FromPoint(Cursor.Position).WorkingArea;
+        return new Point(area.Right - Width, area.Bottom - Height);
+    }
+
+    private void StartWindowMotion(bool opening, Point? anchor = null)
+    {
+        windowMotion.Stop();
+        motionAnchor = anchor ?? GetWindowAnchor();
+        motionStart = Location;
+        motionTarget = opening ? motionAnchor : new Point(motionAnchor.X, motionAnchor.Y + 32);
+        opacityStart = Opacity;
+        opacityTarget = opening ? 1 : .08;
+        motionDuration = opening ? 280 : 190;
+        windowMotionState = opening ? WindowMotionState.Opening : WindowMotionState.Closing;
+        windowMotionWatch.Restart();
+        windowMotion.Start();
+    }
+
+    private void AnimateWindowFrame(object? sender, EventArgs e)
+    {
+        if (windowMotionState == WindowMotionState.None) return;
+        var progress = Math.Clamp(windowMotionWatch.Elapsed.TotalMilliseconds / motionDuration, 0, 1);
+        var eased = windowMotionState == WindowMotionState.Opening
+            ? 1 - Math.Pow(1 - progress, 3)
+            : progress * progress * progress;
+        Location = new Point(
+            (int)Math.Round(motionStart.X + (motionTarget.X - motionStart.X) * eased),
+            (int)Math.Round(motionStart.Y + (motionTarget.Y - motionStart.Y) * eased));
+        Opacity = opacityStart + (opacityTarget - opacityStart) * eased;
+        if (progress < 1) return;
+
+        windowMotion.Stop();
+        windowMotionWatch.Stop();
+        var finishedState = windowMotionState;
+        windowMotionState = WindowMotionState.None;
+        if (finishedState == WindowMotionState.Opening)
+        {
+            Location = motionAnchor;
+            Opacity = 1;
+            return;
+        }
+
+        Hide();
+        Location = motionAnchor;
+        Opacity = 1;
+        if (exitAfterMotion)
+        {
+            exitAfterMotion = false;
+            reallyExit = true;
+            trayIcon.Visible = false;
+            Close();
+        }
+    }
+
+    private void ExitFromTray()
+    {
+        if (!Visible)
+        {
+            reallyExit = true;
+            trayIcon.Visible = false;
+            Close();
+            return;
+        }
+
+        exitAfterMotion = true;
+        StartWindowMotion(opening: false);
     }
 
     protected override void OnShown(EventArgs e)
