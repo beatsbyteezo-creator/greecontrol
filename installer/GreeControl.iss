@@ -47,4 +47,3 @@ Filename: "{app}\{#ProductExe}"; Description: "Abrir Gree Control"; Flags: nowai
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\GreeControl\Updates"
-

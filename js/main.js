@@ -1,4 +1,4 @@
-// inicia a interface (render() est� em app.js; o motor 3D em engine.js)
+// inicia a interface (render() está em app.js; o motor 3D em engine.js)
 render();
 document.querySelectorAll('.nav button[data-view]').forEach(button=>button.addEventListener('click',()=>window.dispatchEvent(new Event('gree:view'))));
 
@@ -16,4 +16,3 @@ window.greeUpdateNotice = message => {
     setTimeout(() => { notice.hidden = true; }, 260);
   }, 7000);
 };
-

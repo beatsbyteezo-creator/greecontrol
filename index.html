@@ -36,7 +36,7 @@
   <div class="top">
     <div class="logo">GREE<small>Gree Control</small></div>
     <div class="top-actions">
-      <button class="ib" aria-label="In�cio"><svg><use href="#home"/></svg></button><button class="ib" id="pw" aria-label="Ligar ou desligar"><svg><use href="#pwr"/></svg></button><button class="ib close-app" id="closeApp" aria-label="Ocultar na bandeja"><svg viewBox="0 0 24 24"><path d="M4 4l16 16M20 4 4 20"/></svg></button>
+      <button class="ib" aria-label="Início"><svg><use href="#home"/></svg></button><button class="ib" id="pw" aria-label="Ligar ou desligar"><svg><use href="#pwr"/></svg></button><button class="ib close-app" id="closeApp" aria-label="Ocultar na bandeja"><svg viewBox="0 0 24 24"><path d="M4 4l16 16M20 4 4 20"/></svg></button>
     </div>
   </div>
 
@@ -46,7 +46,7 @@
 
   <section class="card status">
     <svg class="ico snow-icon" id="sIco"><use href="#snow"/></svg>
-    <div><div class="big"><span class="temp-window" id="tempWindow"><span class="temperature-value" id="sT">22</span></span><sup>�C</sup></div><div class="st" id="sL">Resfriando</div></div>
+    <div><div class="big"><span class="temp-window" id="tempWindow"><span class="temperature-value" id="sT">22</span></span><sup>°C</sup></div><div class="st" id="sL">Resfriando</div></div>
     <div class="sep"></div>
     <div class="vel"><small>Velocidade</small>
       <button class="sel" id="velBtn" aria-label="Alterar velocidade"><svg class="fan-icon"><use href="#fan"/></svg><span id="velT">Auto</span><svg class="ch"><use href="#chev"/></svg></button>
@@ -64,12 +64,12 @@
   <section class="card temp">
     <div class="temp-head"><span class="temp-range">Temperatura</span></div>
     <div class="temp-track-wrap"><input class="temp-slider" id="tempSlider" type="range" min="16" max="30" step="1" value="22" aria-label="Temperatura desejada, de 16 a 30 graus"></div>
-    <div class="temp-limits" aria-hidden="true"><span>16 �C</span><span>30 �C</span></div>
+    <div class="temp-limits" aria-hidden="true"><span>16 °C</span><span>30 °C</span></div>
   </section>
 
   <section class="card fan">
     <svg class="fan-icon"><use href="#fan"/></svg>
-    <div class="m"><div class="fan-title">Velocidade do ventilador</div><div class="fan-track-wrap"><div class="fan-segments" aria-hidden="true"><i></i><i></i><i></i><i></i></div><input class="fan-slider" id="fanSlider" type="range" min="0" max="3" step="1" value="0" aria-label="Velocidade do ventilador"></div><div class="fan-scale" aria-hidden="true"><span>Auto</span><span>Baixo</span><span>M�dio</span><span>Alto</span></div></div>
+    <div class="m"><div class="fan-title">Velocidade do ventilador</div><div class="fan-track-wrap"><div class="fan-segments" aria-hidden="true"><i></i><i></i><i></i><i></i></div><input class="fan-slider" id="fanSlider" type="range" min="0" max="3" step="1" value="0" aria-label="Velocidade do ventilador"></div><div class="fan-scale" aria-hidden="true"><span>Auto</span><span>Baixo</span><span>Médio</span><span>Alto</span></div></div>
     <div class="v"><span id="fT">Auto</span><svg><use href="#chev"/></svg></div>
   </section>
 
@@ -82,30 +82,30 @@
   <section class="view-panel" id="detailsView" aria-label="Detalhes do aparelho">
     <div class="view-heading"><span>Estado do aparelho</span><span class="view-live"><i></i>Dados reais</span></div>
     <div class="detail-grid">
-      <article><small>Estado</small><strong id="detailPower">Indispon�vel</strong></article>
-      <article><small>Temperatura definida</small><strong id="detailTemp">Indispon�vel</strong></article>
-      <article><small>Modo</small><strong id="detailMode">Indispon�vel</strong></article>
-      <article><small>Ventilador</small><strong id="detailFan">Indispon�vel</strong></article>
-      <article class="detail-wide"><small>Conex�o local</small><strong id="detailIP">Aguardando conex�o</strong></article>
+      <article><small>Estado</small><strong id="detailPower">Indisponível</strong></article>
+      <article><small>Temperatura definida</small><strong id="detailTemp">Indisponível</strong></article>
+      <article><small>Modo</small><strong id="detailMode">Indisponível</strong></article>
+      <article><small>Ventilador</small><strong id="detailFan">Indisponível</strong></article>
+      <article class="detail-wide"><small>Conexão local</small><strong id="detailIP">Aguardando conexão</strong></article>
     </div>
     <section class="history-card">
-      <div class="history-head"><div><strong>Historico confirmado</strong><small>Temperatura definida no Gree � sem sensor interno</small></div><div class="history-ranges"><button class="on" data-history-range="24">24 h</button><button data-history-range="168">7 dias</button><button data-history-range="720">30 dias</button></div></div>
+      <div class="history-head"><div><strong>Historico confirmado</strong><small>Temperatura definida no Gree · sem sensor interno</small></div><div class="history-ranges"><button class="on" data-history-range="24">24 h</button><button data-history-range="168">7 dias</button><button data-history-range="720">30 dias</button></div></div>
       <canvas id="historyCanvas" aria-label="Grafico historico da temperatura definida no Gree"></canvas>
       <div class="history-empty" id="historyEmpty">O historico aparece apos o Gree confirmar alteracoes ou leituras.</div>
       <div class="history-summary"><span id="historyLatest">Aguardando dados reais do aparelho</span><span id="historyRangeSummary"></span></div>
-    </section>    <p class="view-note">Os dados aparecem quando o Gree responde pela rede local. Este app n�o mede a temperatura interna do quarto.</p>
+    </section>    <p class="view-note">Os dados aparecem quando o Gree responde pela rede local. Este app não mede a temperatura interna do quarto.</p>
   </section>
-  <section class="view-panel" id="settingsView" aria-label="Configura��es do aplicativo">
-    <div class="view-heading"><span>Conex�o e aplicativo</span></div>
-    <article class="settings-item"><div><small>Ar-condicionado Gree</small><strong id="settingsConnection">Buscando na rede local</strong><p>Conex�o local por Wi-Fi. A busca autom�tica � mantida ativa.</p></div><button class="settings-action" id="openConnectionSettings" type="button">Configurar conex�o</button></article>
-    <article class="settings-item"><div><small>Aplicativo</small><strong>Gree Control para Windows</strong><p>O controle continua na bandeja do sistema quando a janela � ocultada.</p></div></article>
-    <article class="settings-item lan-pairing"><div><small>Safari na mesma rede Wi-Fi</small><strong class="lan-access" id="lanAddress">Preparando endere�o local.</strong><p>Abra esse endere�o no iPhone e informe o c�digo tempor�rio abaixo. O Gree Control precisa continuar aberto no Windows.</p><strong id="lanPairCode"></strong></div></article>
+  <section class="view-panel" id="settingsView" aria-label="Configurações do aplicativo">
+    <div class="view-heading"><span>Conexão e aplicativo</span></div>
+    <article class="settings-item"><div><small>Ar-condicionado Gree</small><strong id="settingsConnection">Buscando na rede local</strong><p>Conexão local por Wi-Fi. A busca automática é mantida ativa.</p></div><button class="settings-action" id="openConnectionSettings" type="button">Configurar conexão</button></article>
+    <article class="settings-item"><div><small>Aplicativo</small><strong>Gree Control para Windows</strong><p>O controle continua na bandeja do sistema quando a janela é ocultada.</p></div></article>
+    <article class="settings-item lan-pairing"><div><small>Safari na mesma rede Wi-Fi</small><strong class="lan-access" id="lanAddress">Preparando endereço local…</strong><p>Abra esse endereço no iPhone e informe o código temporário abaixo. O Gree Control precisa continuar aberto no Windows.</p><strong id="lanPairCode">••••••••</strong></div></article>
     <section class="settings-group" aria-label="Perfis de conforto">
       <div class="settings-group-heading"><strong>Perfis de conforto</strong><small>Salve seus ajustes favoritos e aplique quando quiser.</small></div>
       <div class="comfort-profiles">
-        <article class="comfort-profile" data-profile="sono"><div><strong>Sono</strong><small>Seu ajuste noturno</small></div><select aria-label="Modo para Sono"><option>Frio</option><option>Calor</option><option>Auto</option></select><label><input type="number" min="16" max="30" value="24" aria-label="Temperatura para Sono">�C</label><button class="settings-action profile-apply" type="button">Aplicar</button></article>
-        <article class="comfort-profile" data-profile="trabalho"><div><strong>Trabalho</strong><small>Seu ajuste de foco</small></div><select aria-label="Modo para Trabalho"><option>Auto</option><option>Frio</option><option>Calor</option></select><label><input type="number" min="16" max="30" value="23" aria-label="Temperatura para Trabalho">�C</label><button class="settings-action profile-apply" type="button">Aplicar</button></article>
-        <article class="comfort-profile" data-profile="relaxar"><div><strong>Relaxar</strong><small>Seu ajuste de descanso</small></div><select aria-label="Modo para Relaxar"><option>Frio</option><option>Auto</option><option>Calor</option></select><label><input type="number" min="16" max="30" value="24" aria-label="Temperatura para Relaxar">�C</label><button class="settings-action profile-apply" type="button">Aplicar</button></article>
+        <article class="comfort-profile" data-profile="sono"><div><strong>Sono</strong><small>Seu ajuste noturno</small></div><select aria-label="Modo para Sono"><option>Frio</option><option>Calor</option><option>Auto</option></select><label><input type="number" min="16" max="30" value="24" aria-label="Temperatura para Sono">°C</label><button class="settings-action profile-apply" type="button">Aplicar</button></article>
+        <article class="comfort-profile" data-profile="trabalho"><div><strong>Trabalho</strong><small>Seu ajuste de foco</small></div><select aria-label="Modo para Trabalho"><option>Auto</option><option>Frio</option><option>Calor</option></select><label><input type="number" min="16" max="30" value="23" aria-label="Temperatura para Trabalho">°C</label><button class="settings-action profile-apply" type="button">Aplicar</button></article>
+        <article class="comfort-profile" data-profile="relaxar"><div><strong>Relaxar</strong><small>Seu ajuste de descanso</small></div><select aria-label="Modo para Relaxar"><option>Frio</option><option>Auto</option><option>Calor</option></select><label><input type="number" min="16" max="30" value="24" aria-label="Temperatura para Relaxar">°C</label><button class="settings-action profile-apply" type="button">Aplicar</button></article>
       </div>
     </section>
     <section class="settings-group" aria-label="Rotinas inteligentes">
@@ -113,35 +113,35 @@
       <form class="routine-form" id="routineForm">
         <label for="routineType">Quando</label><select id="routineType"><option value="time">Em um horario diario</option><option value="hot">Quando estiver quente la fora</option><option value="cold">Quando estiver frio la fora</option></select>
         <label id="routineTimeLabel" for="routineTime">Horario</label><input id="routineTime" type="time" value="22:00">
-        <label id="routineThresholdLabel" for="routineThreshold" hidden>Temperatura externa</label><div id="routineThresholdWrap" hidden><span id="routineThresholdPrefix">=</span><input id="routineThreshold" type="number" min="-5" max="45" value="29"><span>�C</span></div>
+        <label id="routineThresholdLabel" for="routineThreshold" hidden>Temperatura externa</label><div id="routineThresholdWrap" hidden><span id="routineThresholdPrefix">≥</span><input id="routineThreshold" type="number" min="-5" max="45" value="29"><span>°C</span></div>
         <label for="routineAction">Acao</label><select id="routineAction"><option value="on">Ligar e ajustar</option><option value="adjust">Ajustar se ja estiver ligado</option><option value="off">Desligar</option></select>
-        <label for="routineMode">Modo e temperatura</label><div class="routine-target"><select id="routineMode"><option>Frio</option><option>Calor</option><option>Auto</option></select><input id="routineTemp" type="number" min="16" max="30" value="24" aria-label="Temperatura da rotina"><span>�C</span></div>
+        <label for="routineMode">Modo e temperatura</label><div class="routine-target"><select id="routineMode"><option>Frio</option><option>Calor</option><option>Auto</option></select><input id="routineTemp" type="number" min="16" max="30" value="24" aria-label="Temperatura da rotina"><span>°C</span></div>
         <button class="settings-action" type="submit">Adicionar rotina</button>
       </form>
       <div class="routine-list" id="routineList"><div class="routine-empty">Nenhuma rotina ativa.</div></div>
     </section>  </section>
   <section class="view-panel assistant-panel" id="assistantView" aria-label="Gree Assistente">
-    <div class="view-heading assistant-heading"><span class="assistant-avatar" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#17283e"/><g class="mascot-shiver"><path d="M10 64c1-11 9-17 22-17s21 6 22 17" fill="#477fbe"/><path d="M25 44h14v11l-7 7-7-7z" fill="#eac5b8"/><path d="M22 48h20l-3 7-7 4-8-4z" fill="#9ed9ff"/><path d="M16 24c0-13 7-19 17-19 11 0 17 8 16 20l-3 18c-2 9-8 14-14 14-8 0-14-6-15-15z" fill="#eecdbf"/><path d="M14 27C10 13 18 5 29 4l4 3 4-4c11 2 18 11 14 25l-5-5-2-9c-5 5-14 8-24 6l-1 10z" fill="#302254"/><path d="M18 28l-4 2 2 8 4-1m28-9 4 2-2 8-4-1" fill="#eecdbf"/><path d="M20 27l8-2m8 0 8 2" stroke="#28213c" stroke-width="2.8" stroke-linecap="round"/><g fill="none" stroke="#28213c" stroke-width="2.7"><circle cx="24" cy="34" r="6.4"/><circle cx="40" cy="34" r="6.4"/><path d="M30.5 34h3M17.5 32.5l-4-1m37 1-4 1"/></g><path d="M21 38q3 2 6 0m10 0q3 2 6 0" fill="none" stroke="#293249" stroke-width="1.7" stroke-linecap="round"/><path d="M31 37l-1 4 3 .5" fill="none" stroke="#c86b75" stroke-width="1.8" stroke-linecap="round"/><path d="M28 47l4-2 4 2-2 2h-4z" fill="#f4f5ff" stroke="#7f5365" stroke-width="1"/><circle cx="22" cy="41" r="3" fill="#e997a1" opacity=".65"/><circle cx="42" cy="41" r="3" fill="#e997a1" opacity=".65"/></g><g class="frost-spark" fill="none" stroke="#9cddff" stroke-width="1.7" stroke-linecap="round"><path d="M53 27v10m-4-8 8 6m0-6-8 6"/><path d="M51 26l2 2 2-2m-4 12 2-2 2 2"/></g></svg></span><span>Gree Assistente<small>Conforto acompanhado no fundo</small></span><span class="view-live">Clima real � Open-Meteo</span></div>
-    <p class="view-note">Sugest�es consultivas com clima externo e hor�rio. O app fica na bandeja para acompanhar mudan�as; nenhuma configura��o � enviada sem voc� escolher aplicar.</p>
-    <div class="assistant-notify"><div><strong>Notifica��es do assistente</strong><small id="assistantNotifyStatus">Ative a localiza��o para iniciar o acompanhamento.</small></div><label class="assistant-toggle"><input id="assistantNotifications" type="checkbox" checked><span>Ativo</span></label><label class="assistant-select-label" for="assistantInterval">A cada</label><select id="assistantInterval"><option value="60">1 hora</option><option value="180" selected>3 horas</option><option value="360">6 horas</option></select></div>
+    <div class="view-heading assistant-heading"><span class="assistant-avatar" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#17283e"/><g class="mascot-shiver"><path d="M10 64c1-11 9-17 22-17s21 6 22 17" fill="#477fbe"/><path d="M25 44h14v11l-7 7-7-7z" fill="#eac5b8"/><path d="M22 48h20l-3 7-7 4-8-4z" fill="#9ed9ff"/><path d="M16 24c0-13 7-19 17-19 11 0 17 8 16 20l-3 18c-2 9-8 14-14 14-8 0-14-6-15-15z" fill="#eecdbf"/><path d="M14 27C10 13 18 5 29 4l4 3 4-4c11 2 18 11 14 25l-5-5-2-9c-5 5-14 8-24 6l-1 10z" fill="#302254"/><path d="M18 28l-4 2 2 8 4-1m28-9 4 2-2 8-4-1" fill="#eecdbf"/><path d="M20 27l8-2m8 0 8 2" stroke="#28213c" stroke-width="2.8" stroke-linecap="round"/><g fill="none" stroke="#28213c" stroke-width="2.7"><circle cx="24" cy="34" r="6.4"/><circle cx="40" cy="34" r="6.4"/><path d="M30.5 34h3M17.5 32.5l-4-1m37 1-4 1"/></g><path d="M21 38q3 2 6 0m10 0q3 2 6 0" fill="none" stroke="#293249" stroke-width="1.7" stroke-linecap="round"/><path d="M31 37l-1 4 3 .5" fill="none" stroke="#c86b75" stroke-width="1.8" stroke-linecap="round"/><path d="M28 47l4-2 4 2-2 2h-4z" fill="#f4f5ff" stroke="#7f5365" stroke-width="1"/><circle cx="22" cy="41" r="3" fill="#e997a1" opacity=".65"/><circle cx="42" cy="41" r="3" fill="#e997a1" opacity=".65"/></g><g class="frost-spark" fill="none" stroke="#9cddff" stroke-width="1.7" stroke-linecap="round"><path d="M53 27v10m-4-8 8 6m0-6-8 6"/><path d="M51 26l2 2 2-2m-4 12 2-2 2 2"/></g></svg></span><span>Gree Assistente<small>Conforto acompanhado no fundo</small></span><span class="view-live">Clima real · Open-Meteo</span></div>
+    <p class="view-note">Sugestões consultivas com clima externo e horário. O app fica na bandeja para acompanhar mudanças; nenhuma configuração é enviada sem você escolher aplicar.</p>
+    <div class="assistant-notify"><div><strong>Notificações do assistente</strong><small id="assistantNotifyStatus">Ative a localização para iniciar o acompanhamento.</small></div><label class="assistant-toggle"><input id="assistantNotifications" type="checkbox" checked><span>Ativo</span></label><label class="assistant-select-label" for="assistantInterval">A cada</label><select id="assistantInterval"><option value="60">1 hora</option><option value="180" selected>3 horas</option><option value="360">6 horas</option></select></div>
     <form class="assistant-search" id="assistantForm">
-      <label for="weatherPlace">Se a localiza��o autom�tica n�o estiver dispon�vel</label>
-      <div class="assistant-search-row"><input id="weatherPlace" autocomplete="address-level2" placeholder="Buscar por cidade � ex.: Recife"><button class="settings-action" type="submit">Buscar</button></div>
+      <label for="weatherPlace">Se a localização automática não estiver disponível</label>
+      <div class="assistant-search-row"><input id="weatherPlace" autocomplete="address-level2" placeholder="Buscar por cidade · ex.: Recife"><button class="settings-action" type="submit">Buscar</button></div>
     </form>
-    <div class="assistant-result" id="assistantResult" aria-live="polite"><strong>Vamos cuidar do conforto?</strong><span>Abra o Assistente para permitir a localiza��o. Depois, ele acompanha o clima enquanto o Gree Control estiver na bandeja.</span></div>
+    <div class="assistant-result" id="assistantResult" aria-live="polite"><strong>Vamos cuidar do conforto?</strong><span>Abra o Assistente para permitir a localização. Depois, ele acompanha o clima enquanto o Gree Control estiver na bandeja.</span></div>
     <div class="assistant-weather" id="assistantWeather" hidden>
-      <div><small>Agora � externo</small><strong id="weatherNow">-</strong></div><div><small>Hoje</small><strong id="weatherRange">-</strong></div><div><small>Umidade</small><strong id="weatherHumidity">-</strong></div><div><small>Chuva</small><strong id="weatherRain">-</strong></div>
+      <div><small>Agora · externo</small><strong id="weatherNow">—</strong></div><div><small>Hoje</small><strong id="weatherRange">—</strong></div><div><small>Umidade</small><strong id="weatherHumidity">—</strong></div><div><small>Chuva</small><strong id="weatherRain">—</strong></div>
     </div>
     <div class="assistant-recommendation" id="assistantRecommendation" hidden>
-      <small>Sugest�o de climatiza��o</small><strong><span id="recommendTemp">-</span> � <span id="recommendMode">-</span></strong><span id="recommendReason"></span><small id="recommendConfidence"></small><button class="settings-action assistant-apply" id="applyRecommendation" type="button" disabled>Aplicar no Gree</button>
+      <small>Sugestão de climatização</small><strong><span id="recommendTemp">—</span> · <span id="recommendMode">—</span></strong><span id="recommendReason"></span><small id="recommendConfidence"></small><button class="settings-action assistant-apply" id="applyRecommendation" type="button" disabled>Aplicar no Gree</button>
     </div>
-    <div class="assistant-chat" id="assistantChat" aria-live="polite"><div class="assistant-chat-message assistant-bot">Oi! Vou observar o clima e o hor�rio para sugerir ajustes confort�veis. Em dias quentes, frios ou durante a noite, explico o motivo antes de voc� aplicar.</div></div>
-    <form class="assistant-chat-form" id="assistantChatForm"><input id="assistantChatInput" placeholder="Converse com o Gree Assistente." aria-label="Mensagem para o assistente"><button type="submit" aria-label="Enviar mensagem">&#8593;</button></form>
+    <div class="assistant-chat" id="assistantChat" aria-live="polite"><div class="assistant-chat-message assistant-bot">Oi! Vou observar o clima e o horário para sugerir ajustes confortáveis. Em dias quentes, frios ou durante a noite, explico o motivo antes de você aplicar.</div></div>
+    <form class="assistant-chat-form" id="assistantChatForm"><input id="assistantChatInput" placeholder="Converse com o Gree Assistente…" aria-label="Mensagem para o assistente"><button type="submit" aria-label="Enviar mensagem">&#8593;</button></form>
   </section>
   <nav class="nav">
     <button class="on" data-view="control"><svg><use href="#home"/></svg>Controle</button>
     <button data-view="details"><svg><use href="#chart"/></svg>Detalhes</button>
-    <button data-view="settings"><svg><use href="#gear"/></svg>Configura��es</button>
+    <button data-view="settings"><svg><use href="#gear"/></svg>Configurações</button>
     <button data-view="assistant"><svg><use href="#sparkle"/></svg>Assistente</button>
   </nav>
 </main>
@@ -158,9 +158,9 @@
 <dialog id="pairDialog">
   <form class="pair-form" id="pairForm">
     <label for="pairCode">Conectar este Safari</label>
-    <p>Digite o c�digo de pareamento mostrado em Configura��es no Gree Control do Windows. Os dois dispositivos precisam estar no mesmo Wi-Fi.</p>
-    <input id="pairCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="C�digo de 8 d�gitos" required>
-    <button class="settings-action" type="submit">Conectar com seguran�a</button>
+    <p>Digite o código de pareamento mostrado em Configurações no Gree Control do Windows. Os dois dispositivos precisam estar no mesmo Wi‑Fi.</p>
+    <input id="pairCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Código de 8 dígitos" required>
+    <button class="settings-action" type="submit">Conectar com segurança</button>
     <p id="pairMessage" role="status"></p>
   </form>
 </dialog>
@@ -174,4 +174,3 @@
 <script src="js/automation.js"></script>
 </body>
 </html>
-

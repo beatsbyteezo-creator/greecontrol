@@ -277,7 +277,7 @@ public sealed class Form1 : Form
             if (completed != readUrl) throw new InvalidOperationException("A ponte local demorou para iniciar.");
             var url = await readUrl;
             if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http://127.0.0.1:", StringComparison.Ordinal))
-                throw new InvalidOperationException("N�o foi poss�vel iniciar a ponte local do Gree.");
+                throw new InvalidOperationException("Não foi possível iniciar a ponte local do Gree.");
 
             await browser.EnsureCoreWebView2Async();
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -312,11 +312,11 @@ public sealed class Form1 : Form
                     if (payload.RootElement.TryGetProperty("type", out var kind) && kind.GetString() == "assistant-toast")
                     {
                         var title = payload.RootElement.TryGetProperty("title", out var titleValue) ? titleValue.GetString() ?? "Gree Assistente" : "Gree Assistente";
-                        var body = payload.RootElement.TryGetProperty("body", out var bodyValue) ? bodyValue.GetString() ?? "H� uma nova sugest�o de conforto." : "H� uma nova sugest�o de conforto.";
+                        var body = payload.RootElement.TryGetProperty("body", out var bodyValue) ? bodyValue.GetString() ?? "Há uma nova sugestão de conforto." : "Há uma nova sugestão de conforto.";
                         ShowAssistantToast(title, body);
                     }
                     else if (kind.GetString() == "connection-lost")
-                        ShowAssistantToast("Gree desconectado", "A conex�o caiu. Estou tentando reconectar pela rede local.");
+                        ShowAssistantToast("Gree desconectado", "A conexão caiu. Estou tentando reconectar pela rede local.");
                     else if (kind.GetString() == "connection-restored")
                         ShowAssistantToast("Gree reconectado", "O controle voltou a responder pela rede local.");
                     else if (kind.GetString() == "assistant-device-state")
@@ -327,7 +327,7 @@ public sealed class Form1 : Form
                             var on = payload.RootElement.TryGetProperty("on", out var onValue) && onValue.GetBoolean();
                             var temp = payload.RootElement.TryGetProperty("temp", out var tempValue) ? tempValue.GetInt32() : 0;
                             var mode = payload.RootElement.TryGetProperty("mode", out var modeValue) ? modeValue.GetString() ?? "" : "";
-                            if (assistantToast is not null) assistantToast.DeviceSummary = $"Gree {(on ? "ligado" : "desligado")} � {temp}�C � {mode}";
+                            if (assistantToast is not null) assistantToast.DeviceSummary = $"Gree {(on ? "ligado" : "desligado")} · {temp}°C · {mode}";
                         }
                     }
                 }
@@ -420,4 +420,3 @@ public sealed class Form1 : Form
         catch { }
     }
 }
-

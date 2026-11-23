@@ -32,7 +32,7 @@ internal static class ReleaseUpdater
                 !Version.TryParse(Application.ProductVersion.Split('+')[0], out var current) || latest <= current)
                 return;
 
-            updateStatus($"Atualiza��o {latest} encontrada. Baixando.");
+            updateStatus($"Atualização {latest} encontrada. Baixando…");
 
             if (!root.TryGetProperty("assets", out var assets)) return;
             var asset = assets.EnumerateArray().FirstOrDefault(item =>
@@ -44,7 +44,7 @@ internal static class ReleaseUpdater
             var url = urlValue.GetString();
             if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(digest) || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
             {
-                updateStatus("A atualiza��o foi encontrada, mas o instalador ainda n�o est� dispon�vel.");
+                updateStatus("A atualização foi encontrada, mas o instalador ainda não está disponível.");
                 return;
             }
 
@@ -67,12 +67,12 @@ internal static class ReleaseUpdater
                         System.Text.Encoding.ASCII.GetBytes(digest.ToLowerInvariant())))
                 {
                     File.Delete(installerPath);
-                    updateStatus("N�o foi poss�vel validar o instalador. Nenhuma altera��o foi feita.");
+                    updateStatus("Não foi possível validar o instalador. Nenhuma alteração foi feita.");
                     return;
                 }
             }
 
-            updateStatus($"Atualiza��o {latest} baixada. Instalando agora.");
+            updateStatus($"Atualização {latest} baixada. Instalando agora…");
             await Task.Delay(1400);
 
             var installer = new ProcessStartInfo(installerPath,
@@ -82,11 +82,11 @@ internal static class ReleaseUpdater
                 WorkingDirectory = updateDirectory
             };
             if (Process.Start(installer) is not null) beginShutdown();
-            else updateStatus("O instalador n�o p�de ser iniciado. Tente novamente mais tarde.");
+            else updateStatus("O instalador não pôde ser iniciado. Tente novamente mais tarde.");
         }
         catch (Exception error)
         {
-            updateStatus("N�o foi poss�vel buscar a atualiza��o agora. O Gree Control continua aberto.");
+            updateStatus("Não foi possível buscar a atualização agora. O Gree Control continua aberto.");
             try
             {
                 var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GreeControl", "update.log");
@@ -97,4 +97,3 @@ internal static class ReleaseUpdater
         }
     }
 }
-

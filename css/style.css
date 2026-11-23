@@ -219,4 +219,3 @@ button:disabled{filter:none!important;transform:none!important}
 .update-notice.show{opacity:1;transform:translateY(0)}
 .update-notice[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.update-notice{transition:none}}
-
