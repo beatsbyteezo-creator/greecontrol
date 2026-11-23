@@ -19,6 +19,9 @@ public sealed class Form1 : Form
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect
     {
@@ -34,6 +37,7 @@ public sealed class Form1 : Form
     private bool reallyExit;
     private readonly System.Windows.Forms.Timer assistantMonitor = new() { Interval = 30_000 };
     private readonly System.Windows.Forms.Timer windowMotion = new() { Interval = 15 };
+    private readonly System.Windows.Forms.Timer foregroundMonitor = new() { Interval = 80 };
     private readonly Stopwatch windowMotionWatch = new();
     private AssistantToastForm? assistantToast;
     private bool webPageReady;
@@ -74,12 +78,12 @@ public sealed class Form1 : Form
         {
             BeginInvoke(() =>
             {
-                // Keep the panel open when focus moves to its assistant bubble.
-                if (Visible && !ContainsFocus && assistantToast?.ContainsFocus != true)
+                if (Visible && !ContainsFocus && !IsGreeWindowForeground())
                     HideToTray();
             });
         };
         windowMotion.Tick += AnimateWindowFrame;
+        foregroundMonitor.Tick += CheckForegroundWindow;
         assistantMonitor.Tick += (_, _) =>
         {
             if (browser.CoreWebView2 is not null)
@@ -87,7 +91,7 @@ public sealed class Form1 : Form
         };
         Controls.Add(browser);
         Load += LoadApp;
-        FormClosed += (_, _) => { assistantMonitor.Stop(); assistantMonitor.Dispose(); windowMotion.Stop(); windowMotion.Dispose(); assistantToast?.Close(); trayIcon.Visible = false; trayIcon.Dispose(); StopBridge(); };
+        FormClosed += (_, _) => { assistantMonitor.Stop(); assistantMonitor.Dispose(); foregroundMonitor.Stop(); foregroundMonitor.Dispose(); windowMotion.Stop(); windowMotion.Dispose(); assistantToast?.Close(); trayIcon.Visible = false; trayIcon.Dispose(); StopBridge(); };
         KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) HideToTray(); };
     }
 
@@ -136,13 +140,14 @@ public sealed class Form1 : Form
 
     private void StartWindowMotion(bool opening, Point? anchor = null)
     {
+        foregroundMonitor.Stop();
         windowMotion.Stop();
         motionAnchor = anchor ?? GetWindowAnchor();
         motionStart = Location;
-        motionTarget = opening ? motionAnchor : new Point(motionAnchor.X, motionAnchor.Y + 32);
+        motionTarget = opening ? motionAnchor : new Point(motionAnchor.X, motionAnchor.Y + 48);
         opacityStart = Opacity;
         opacityTarget = opening ? 1 : .08;
-        motionDuration = opening ? 280 : 190;
+        motionDuration = 280;
         windowMotionState = opening ? WindowMotionState.Opening : WindowMotionState.Closing;
         windowMotionWatch.Restart();
         windowMotion.Start();
@@ -169,6 +174,7 @@ public sealed class Form1 : Form
         {
             Location = motionAnchor;
             Opacity = 1;
+            foregroundMonitor.Start();
             return;
         }
 
@@ -182,6 +188,22 @@ public sealed class Form1 : Form
             trayIcon.Visible = false;
             Close();
         }
+    }
+
+    private void CheckForegroundWindow(object? sender, EventArgs e)
+    {
+        if (!Visible || windowMotionState != WindowMotionState.None || !IsHandleCreated)
+            return;
+
+        if (!IsGreeWindowForeground()) HideToTray();
+    }
+
+    private bool IsGreeWindowForeground()
+    {
+        var foreground = GetForegroundWindow();
+        if (foreground == Handle) return true;
+        return assistantToast is { IsDisposed: false, Visible: true } toast &&
+            (foreground == toast.Handle || toast.ContainsFocus);
     }
 
     private void ExitFromTray()
@@ -205,6 +227,7 @@ public sealed class Form1 : Form
         Location = new Point(area.Right - Width, area.Bottom - Height);
         base.OnShown(e);
         ApplyRoundedCorners();
+        foregroundMonitor.Start();
     }
 
     protected override void OnSizeChanged(EventArgs e)
