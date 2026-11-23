@@ -40,9 +40,20 @@
     </div>
   </div>
 
-  <div class="update-notice" id="updateNotice" role="status" aria-live="polite" hidden>
-    <span class="update-notice-message" id="updateNoticeMessage"></span>
-    <button class="update-notice-action" id="updateNoticeAction" type="button" disabled hidden>Baixando…</button>
+  <div class="update-overlay" id="updateNotice" hidden>
+    <section class="update-card" role="dialog" aria-modal="true" aria-labelledby="updateTitle" aria-describedby="updateNoticeMessage">
+      <div class="update-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 17v3h14v-3"/></svg></div>
+      <p class="update-eyebrow">GREE CONTROL · ATUALIZAÇÃO</p>
+      <h2 id="updateTitle">Uma nova versão está disponível</h2>
+      <p class="update-notice-message" id="updateNoticeMessage">Preparando a atualização…</p>
+      <div class="update-progress" role="progressbar" aria-label="Progresso do download"><span id="updateProgressBar"></span></div>
+      <div class="update-progress-label" id="updateProgressLabel">Conectando ao GitHub…</div>
+      <div class="update-actions">
+        <button class="update-notice-action" id="updateNoticeAction" type="button" disabled>Baixando…</button>
+        <button class="update-notice-later" id="updateNoticeLater" type="button">Agora não</button>
+      </div>
+      <small>O Gree Control será fechado e reaberto para concluir a instalação.</small>
+    </section>
   </div>
 
   <div class="scene"><canvas id="cv" role="img" aria-label="Ar-condicionado soprando ar"></canvas></div>
