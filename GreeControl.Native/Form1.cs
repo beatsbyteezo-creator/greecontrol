@@ -38,6 +38,8 @@ public sealed class Form1 : Form
     private AssistantToastForm? assistantToast;
     private bool webPageReady;
     private string? pendingUpdateNotice;
+    private string? pendingUpdateAction;
+    private bool pendingUpdatePersistent;
     private bool openAssistantWhenReady;
     private bool exitAfterMotion;
     private WindowMotionState windowMotionState;
@@ -306,6 +308,16 @@ public sealed class Form1 : Form
             {
                 var text = message.TryGetWebMessageAsString();
                 if (text == "close-app") { Close(); return; }
+                if (text == "install-update")
+                {
+                    _ = ReleaseUpdater.InstallPending(ShowUpdateNotice, () =>
+                    {
+                        reallyExit = true;
+                        trayIcon.Visible = false;
+                        Application.Exit();
+                    });
+                    return;
+                }
                 try
                 {
                     using var payload = JsonDocument.Parse(text);
@@ -339,19 +351,17 @@ public sealed class Form1 : Form
                 if (webPageReady && pendingUpdateNotice is not null)
                 {
                     var message = pendingUpdateNotice;
+                    var action = pendingUpdateAction;
+                    var persistent = pendingUpdatePersistent;
                     pendingUpdateNotice = null;
-                    ShowUpdateNotice(message);
+                    pendingUpdateAction = null;
+                    ShowUpdateNotice(message, action, persistent);
                 }
                 if (webPageReady && openAssistantWhenReady) OpenAssistantPage();
             };
             browser.CoreWebView2.Navigate(url);
             assistantMonitor.Start();
-            _ = ReleaseUpdater.CheckAndInstallAsync(ShowUpdateNotice, () =>
-            {
-                reallyExit = true;
-                trayIcon.Visible = false;
-                Application.Exit();
-            });
+            _ = ReleaseUpdater.CheckForUpdateAsync(ShowUpdateNotice);
         }
         catch (Exception ex)
         {
@@ -363,20 +373,23 @@ public sealed class Form1 : Form
         }
     }
 
-    private void ShowUpdateNotice(string message)
+    private void ShowUpdateNotice(string message, string? actionLabel = null, bool persistent = false)
     {
         if (InvokeRequired)
         {
-            BeginInvoke(() => ShowUpdateNotice(message));
+            BeginInvoke(() => ShowUpdateNotice(message, actionLabel, persistent));
             return;
         }
         if (!webPageReady || browser.CoreWebView2 is null)
         {
             pendingUpdateNotice = message;
+            pendingUpdateAction = actionLabel;
+            pendingUpdatePersistent = persistent;
             return;
         }
         var encodedMessage = JsonSerializer.Serialize(message);
-        _ = browser.CoreWebView2.ExecuteScriptAsync($"window.greeUpdateNotice?.({encodedMessage})");
+        var encodedAction = JsonSerializer.Serialize(actionLabel);
+        _ = browser.CoreWebView2.ExecuteScriptAsync($"window.greeUpdateNotice?.({encodedMessage},{encodedAction},{persistent.ToString().ToLowerInvariant()})");
     }
 
     private void ShowAssistantToast(string title, string body)

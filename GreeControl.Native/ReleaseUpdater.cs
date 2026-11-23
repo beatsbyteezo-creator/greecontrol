@@ -10,6 +10,7 @@ internal static class ReleaseUpdater
     private const string Repository = "beatsbyteezo-creator/GreeControl";
     private const string InstallerAsset = "GreeControl-Setup-x64.exe";
     private static readonly HttpClient Client = CreateClient();
+    private static string? pendingInstallerPath;
 
     private static HttpClient CreateClient()
     {
@@ -19,7 +20,7 @@ internal static class ReleaseUpdater
         return client;
     }
 
-    public static async Task CheckAndInstallAsync(Action<string> updateStatus, Action beginShutdown)
+    public static async Task CheckForUpdateAsync(Action<string, string?, bool> updateStatus)
     {
         try
         {
@@ -32,19 +33,27 @@ internal static class ReleaseUpdater
                 !Version.TryParse(Application.ProductVersion.Split('+')[0], out var current) || latest <= current)
                 return;
 
-            updateStatus($"Atualização {latest} encontrada. Baixando…");
+            updateStatus($"Atualização {latest} encontrada. Preparando download…", "Baixando…", true);
 
-            if (!root.TryGetProperty("assets", out var assets)) return;
+            if (!root.TryGetProperty("assets", out var assets))
+            {
+                updateStatus("O instalador desta atualização ainda não está disponível.", null, false);
+                return;
+            }
             var asset = assets.EnumerateArray().FirstOrDefault(item =>
                 item.TryGetProperty("name", out var name) && name.GetString() == InstallerAsset);
             if (asset.ValueKind != JsonValueKind.Object ||
                 !asset.TryGetProperty("browser_download_url", out var urlValue) ||
-                !asset.TryGetProperty("digest", out var digestValue)) return;
+                !asset.TryGetProperty("digest", out var digestValue))
+            {
+                updateStatus("O instalador desta atualização ainda não está disponível.", null, false);
+                return;
+            }
             var digest = digestValue.GetString();
             var url = urlValue.GetString();
             if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(digest) || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
             {
-                updateStatus("A atualização foi encontrada, mas o instalador ainda não está disponível.");
+                updateStatus("A atualização foi encontrada, mas não foi possível validar os dados do instalador.", null, false);
                 return;
             }
 
@@ -56,7 +65,26 @@ internal static class ReleaseUpdater
                 download.EnsureSuccessStatusCode();
                 await using var source = await download.Content.ReadAsStreamAsync();
                 await using var destination = File.Create(installerPath);
-                await source.CopyToAsync(destination);
+                var totalBytes = download.Content.Headers.ContentLength;
+                var buffer = new byte[128 * 1024];
+                long receivedBytes = 0;
+                var lastReportedStep = -1;
+                int count;
+                while ((count = await source.ReadAsync(buffer)) > 0)
+                {
+                    await destination.WriteAsync(buffer.AsMemory(0, count));
+                    receivedBytes += count;
+                    if (totalBytes is > 0)
+                    {
+                        var percentage = (int)Math.Min(99, receivedBytes * 100 / totalBytes.Value);
+                        var step = percentage / 5;
+                        if (step != lastReportedStep)
+                        {
+                            lastReportedStep = step;
+                            updateStatus($"Baixando atualização {latest}: {percentage}%", "Baixando…", true);
+                        }
+                    }
+                }
             }
 
             await using (var file = File.OpenRead(installerPath))
@@ -67,26 +95,17 @@ internal static class ReleaseUpdater
                         System.Text.Encoding.ASCII.GetBytes(digest.ToLowerInvariant())))
                 {
                     File.Delete(installerPath);
-                    updateStatus("Não foi possível validar o instalador. Nenhuma alteração foi feita.");
+                    updateStatus("A validação do instalador falhou. Nenhuma alteração foi feita.", null, false);
                     return;
                 }
             }
 
-            updateStatus($"Atualização {latest} baixada. Instalando agora…");
-            await Task.Delay(1400);
-
-            var installer = new ProcessStartInfo(installerPath,
-                "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS")
-            {
-                UseShellExecute = true,
-                WorkingDirectory = updateDirectory
-            };
-            if (Process.Start(installer) is not null) beginShutdown();
-            else updateStatus("O instalador não pôde ser iniciado. Tente novamente mais tarde.");
+            pendingInstallerPath = installerPath;
+            updateStatus($"Atualização {latest} pronta para instalar.", "Instalar e reiniciar", true);
         }
         catch (Exception error)
         {
-            updateStatus("Não foi possível buscar a atualização agora. O Gree Control continua aberto.");
+            updateStatus("Não foi possível baixar a atualização. O Gree Control continua aberto.", null, false);
             try
             {
                 var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GreeControl", "update.log");
@@ -94,6 +113,47 @@ internal static class ReleaseUpdater
                 File.AppendAllText(path, $"{DateTime.Now:O} {error.Message}{Environment.NewLine}");
             }
             catch { }
+        }
+    }
+
+    public static bool InstallPending(Action<string, string?, bool> updateStatus, Action beginShutdown)
+    {
+        var installerPath = pendingInstallerPath;
+        if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
+        {
+            updateStatus("O instalador ainda não está pronto. Aguarde o fim do download.", null, false);
+            return false;
+        }
+
+        try
+        {
+            var updateDirectory = Path.GetDirectoryName(installerPath)!;
+            var installer = new ProcessStartInfo(installerPath,
+                "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS")
+            {
+                UseShellExecute = true,
+                WorkingDirectory = updateDirectory
+            };
+            if (Process.Start(installer) is null)
+            {
+                updateStatus("O Windows não conseguiu iniciar o instalador. Tente novamente.", null, false);
+                return false;
+            }
+
+            beginShutdown();
+            return true;
+        }
+        catch (Exception error)
+        {
+            updateStatus("Não foi possível iniciar a atualização. O Gree Control continua aberto.", null, false);
+            try
+            {
+                var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GreeControl", "update.log");
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.AppendAllText(path, $"{DateTime.Now:O} {error.Message}{Environment.NewLine}");
+            }
+            catch { }
+            return false;
         }
     }
 }
