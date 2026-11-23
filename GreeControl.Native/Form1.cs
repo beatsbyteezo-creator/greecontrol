@@ -68,6 +68,15 @@ public sealed class Form1 : Form
         trayMenu.Items.Add("Sair", null, (_, _) => ExitFromTray());
         trayIcon = new NotifyIcon { Text = "Gree Control", Icon = Icon, ContextMenuStrip = trayMenu, Visible = true };
         trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) RestoreFromTray(); };
+        Deactivate += (_, _) =>
+        {
+            BeginInvoke(() =>
+            {
+                // Keep the panel open when focus moves to its assistant bubble.
+                if (Visible && !ContainsFocus && assistantToast?.ContainsFocus != true)
+                    HideToTray();
+            });
+        };
         windowMotion.Tick += AnimateWindowFrame;
         assistantMonitor.Tick += (_, _) =>
         {
@@ -289,12 +298,9 @@ public sealed class Form1 : Form
                     return;
                 }
 
-                var answer = MessageBox.Show(this,
-                    "O Gree Control quer acessar a localiza��o deste computador para consultar o clima local. Permitir?",
-                    "Permiss�o de localiza��o", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                request.State = answer == DialogResult.Yes
-                    ? Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Allow
-                    : Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Deny;
+                // The app serves only from its own loopback bridge. Grant location there
+                // automatically so local weather and Gree Assistente work without a dialog.
+                request.State = Microsoft.Web.WebView2.Core.CoreWebView2PermissionState.Allow;
             };
             browser.CoreWebView2.WebMessageReceived += (_, message) =>
             {

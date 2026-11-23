@@ -29,9 +29,6 @@ VersionInfoProductName=Gree Control
 VersionInfoProductVersion={#ProductVersion}
 VersionInfoVersion={#ProductVersion}.0
 
-[Tasks]
-Name: "autostart"; Description: "Iniciar o Gree Control com o Windows (na bandeja)"; GroupDescription: "Preferências:"; Flags: checkedonce
-
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\installer-output\MicrosoftEdgeWebView2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
@@ -41,7 +38,8 @@ Name: "{group}\Gree Control"; Filename: "{app}\{#ProductExe}"; WorkingDir: "{app
 Name: "{group}\Desinstalar Gree Control"; Filename: "{uninstallexe}"
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "GreeControl"; ValueData: """{app}\{#ProductExe}"""; Tasks: autostart; Flags: uninsdeletevalue
+; Remove the startup entry created by previous versions so the app no longer opens with Windows.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "GreeControl"; Flags: deletevalue
 
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebView2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Instalando o componente WebView2..."; Flags: runhidden waituntilterminated
@@ -49,3 +47,4 @@ Filename: "{app}\{#ProductExe}"; Description: "Abrir Gree Control"; Flags: nowai
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\GreeControl\Updates"
+
