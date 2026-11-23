@@ -1,6 +1,7 @@
 {
   let token=new URLSearchParams(location.search).get('token');
-  if(!token){try{token=sessionStorage.getItem('gree.sessionToken')}catch{}}
+  if(token){try{localStorage.setItem('gree.sessionToken',token)}catch{}}
+  if(!token){try{token=localStorage.getItem('gree.sessionToken')||sessionStorage.getItem('gree.sessionToken')}catch{}}
   const dialog=$('#connectDialog'), ipInput=$('#deviceIP'), message=$('#connectMessage');
   const connection=document.createElement('button');
   connection.id='connection';
@@ -17,7 +18,7 @@
     try{
       const response=await fetch('/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode.value.trim()})});
       const data=await response.json();if(!response.ok)throw new Error(data.error||'Não foi possível parear este Safari.');
-      token=data.token;sessionStorage.setItem('gree.sessionToken',token);location.reload();
+      token=data.token;localStorage.setItem('gree.sessionToken',token);sessionStorage.setItem('gree.sessionToken',token);location.reload();
     }catch(error){pairMessage.textContent=error.message;}
   };
   const controls=$$('#pw,#tempSlider,#velBtn,.mode,#fanSlider,.chip');
@@ -26,7 +27,18 @@
   const rememberedIP=()=>{try{return localStorage.getItem('gree.lastIP')||''}catch{return ''}};
   const rememberIP=ip=>{try{if(ip)localStorage.setItem('gree.lastIP',ip)}catch{}};
   st.on=false;
-  if(token)fetch('/api/info',{headers:{'x-gree-token':token}}).then(response=>response.ok?response.json():null).then(info=>{
+  if(token)fetch('/api/info',{headers:{'x-gree-token':token}}).then(response=>{
+    if(!response.ok){
+      if(!new URLSearchParams(location.search).has('token')){
+        try{localStorage.removeItem('gree.sessionToken');sessionStorage.removeItem('gree.sessionToken')}catch{}
+        token=null;
+        if(!pairDialog.open)pairDialog.showModal();
+        connection.textContent='Pareie este iPhone novamente';
+      }
+      return null;
+    }
+    return response.json();
+  }).then(info=>{
     if(!info)return;
     $('#lanAddress').textContent=info.lanUrl;
     $('#lanPairCode').textContent=info.pin;

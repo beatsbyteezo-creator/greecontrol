@@ -1,11 +1,26 @@
 const http=require('node:http');
 const {readFile}=require('node:fs/promises');
+const fs=require('node:fs');
+const path=require('node:path');
 const {randomBytes}=require('node:crypto');
 const {isIPv4}=require('node:net');
 const os=require('node:os');
 const gree=require('./gree.cjs');
-const token=randomBytes(24).toString('hex');
+const appData=process.env.LOCALAPPDATA||os.homedir();
+const dataDir=path.join(appData,'GreeControl');
+const tokenFile=path.join(dataDir,'lan-token');
+let token;
+try{
+ fs.mkdirSync(dataDir,{recursive:true});
+ const saved=fs.readFileSync(tokenFile,'utf8').trim();
+ token=/^[a-f0-9]{48}$/.test(saved)?saved:null;
+}catch{}
+if(!token){
+ token=randomBytes(24).toString('hex');
+ try{fs.mkdirSync(dataDir,{recursive:true});fs.writeFileSync(tokenFile,token,{encoding:'utf8',mode:0o600})}catch{}
+}
 const pin=String(randomBytes(4).readUInt32BE(0)%90000000+10000000);
+const port=Number(process.env.GREE_PORT)||47821;
 const files={'/':'index.html','/manifest.webmanifest':'manifest.webmanifest','/gree-icon.svg':'gree-icon.svg','/gree-icon.png':'gree-icon.png','/css/style.css':'css/style.css','/js/app.js':'js/app.js','/js/engine.js':'js/engine.js','/js/main.js':'js/main.js','/js/connection.js':'js/connection.js','/js/history.js':'js/history.js','/js/preferences.js':'js/preferences.js','/js/assistant.js':'js/assistant.js','/js/automation.js':'js/automation.js'};
 const types={html:'text/html',css:'text/css',js:'text/javascript',webmanifest:'application/manifest+json',svg:'image/svg+xml',png:'image/png'};
 let device,busy=false;
@@ -62,8 +77,8 @@ const server=http.createServer(async (req,res)=>{
  }catch(error){res.writeHead(400).end(JSON.stringify({error:error.message}));}
  finally{busy=false;}
 });
-server.listen(0,'0.0.0.0',()=>{
- const port=server.address().port,ip=findLanAddress();
+server.listen(port,'0.0.0.0',()=>{
+ const ip=findLanAddress();
  lanUrl=ip?'http://'+ip+':'+port+'/':'Nenhum IPv4 privado ativo foi encontrado';
  console.log('http://127.0.0.1:'+port+'/?token='+token);
  console.log(JSON.stringify({lanUrl,pin}));

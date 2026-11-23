@@ -1,12 +1,20 @@
 # Gree Control
 
-Aplicativo nativo para Windows que controla aparelhos Gree pela rede local. A interface roda em WebView2 dentro de uma janela WinForms; o Edge não abre como navegador.
+Aplicativo para Windows que controla aparelhos Gree pela rede local. A interface roda em uma janela nativa com WebView2; o Edge não abre como navegador.
 
-## Instalação para usuários
+## Instalação no Windows
 
-Baixe `GreeControl-Setup-x64.exe` na página **Releases** do GitHub e execute. O instalador é por usuário, aplica o ícone do app, instala o WebView2 se necessário, inclui o runtime .NET e Node.js, cria atalhos no Menu Iniciar e não configura inicialização automática com o Windows.
+Baixe `GreeControl-Setup-x64.exe` na página **Releases** do GitHub e execute. O instalador é por usuário, aplica o ícone do app, instala o WebView2 se necessário, inclui o runtime .NET, cria atalhos no Menu Iniciar e não configura inicialização automática com o Windows.
 
-Ao abrir, o aplicativo consulta a versão estável mais recente do repositório público. Se encontrar uma versão mais nova, valida o SHA-256 publicado pelo GitHub, instala em modo silencioso e reabre o Gree Control. A instalação não precisa de privilégios de administrador.
+Ao abrir, o aplicativo consulta a versão estável mais recente do repositório público. Se encontrar uma versão mais nova, valida o SHA-256 publicado pelo GitHub, instala em modo silencioso e reabre o Gree Control.
+
+## Usar como app no iPhone
+
+O Gree Control também serve a interface pela rede local. Deixe o app aberto no Windows e, na tela **Configurações**, use o endereço exibido em “Gree Control no iPhone”. O iPhone e o PC precisam estar na mesma rede Wi-Fi; redes de convidados podem bloquear a comunicação entre aparelhos.
+
+No Safari, abra esse endereço, informe o código de pareamento mostrado no Windows e escolha **Compartilhar → Adicionar à Tela de Início**. Ative **Abrir como App da Web** se a opção aparecer. O pareamento fica salvo no iPhone. O app do Windows precisa permanecer aberto na bandeja para que o controle funcione. Se o roteador mudar o IP do PC, consulte o novo endereço nas configurações do Windows.
+
+A interface usa a porta local `47821` por padrão. Você pode substituí-la com a variável de ambiente `GREE_PORT` antes de iniciar o servidor. O endereço local usa HTTP e deve ficar restrito à sua rede doméstica.
 
 ## Desenvolvimento
 
@@ -20,16 +28,7 @@ O arquivo `Abrir Gree Control.bat` é um lançador de desenvolvimento local e re
 
 ## Criar uma versão
 
-Altere `VERSION` para a próxima versão estável (formato `MAJOR.MINOR.PATCH`) e envie a alteração à branch principal. Por exemplo, para publicar a versão `1.2.7`:
-
-```powershell
-Set-Content VERSION '1.2.7'
-git add VERSION
-git commit -m "Release v1.2.7"
-git push
-```
-
-O workflow `.github/workflows/release-windows.yml` publica o instalador `GreeControl-Setup-x64.exe` como release. Mantenha o repositório público para que o atualizador integrado acesse as releases sem token embutido no aplicativo.
+Altere `VERSION` para a próxima versão estável (formato `MAJOR.MINOR.PATCH`) e envie a alteração à branch principal. O workflow `.github/workflows/release-windows.yml` publica o instalador `GreeControl-Setup-x64.exe` como release. Mantenha o repositório público para que o atualizador integrado acesse as releases sem token embutido no aplicativo.
 
 ## Estrutura
 

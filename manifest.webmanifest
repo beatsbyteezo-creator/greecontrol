@@ -2,8 +2,11 @@
   "name": "Gree Control",
   "short_name": "Gree Control",
   "description": "Controle local do ar-condicionado Gree",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#10131a",
   "theme_color": "#171c2a",
   "icons": [
