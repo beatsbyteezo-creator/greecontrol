@@ -6,7 +6,7 @@ Aplicativo para Windows que controla aparelhos Gree pela rede local. A interface
 
 Baixe `GreeControl-Setup-x64.exe` na página **Releases** do GitHub e execute. O instalador é por usuário, aplica o ícone do app, instala o WebView2 se necessário, inclui o runtime .NET, cria atalhos no Menu Iniciar e não configura inicialização automática com o Windows.
 
-Ao abrir, o aplicativo consulta a versão estável mais recente do repositório público. Se encontrar uma versão mais nova, valida o SHA-256 publicado pelo GitHub, instala em modo silencioso e reabre o Gree Control.
+Ao abrir e a cada 15 minutos enquanto estiver em execução, o aplicativo consulta os metadados publicados com o instalador. Se encontrar uma versão mais nova, valida o SHA-256 e oferece a opção de instalar e reiniciar.
 
 O painel abre acima do relógio do Windows. Use o ícone da bandeja para abrir o painel e o botão de fechar para ocultá-lo. Na bandeja, o aplicativo mantém o acesso pelo iPhone e as rotinas. Para encerrar, use **Sair** no menu do ícone da bandeja. As sugestões do Assistente aparecem na aba **Assistente**.
 
@@ -43,6 +43,6 @@ Altere `VERSION` para a próxima versão estável (formato `MAJOR.MINOR.PATCH`) 
 
 ## Conexão e privacidade
 
-Os comandos para o ar-condicionado usam a rede local e dependem do aparelho estar acessível no Wi-Fi. O assistente consulta clima externo via Open-Meteo. O atualizador contata a API de Releases do GitHub. Não coloque tokens, PINs ou arquivos locais de diagnóstico no repositório.
+Os comandos para o ar-condicionado usam a rede local e dependem do aparelho estar acessível no Wi-Fi. O assistente consulta clima externo via Open-Meteo. O atualizador consulta os arquivos da versão publicada no GitHub. Não coloque tokens, PINs ou arquivos locais de diagnóstico no repositório.
 
 O instalador e o executável ainda não têm assinatura digital de editor; o Windows pode exibir o aviso do SmartScreen na primeira execução. Remover esse aviso exige um certificado de assinatura de código.

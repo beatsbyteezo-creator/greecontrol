@@ -59,6 +59,15 @@ jobs:
           & $iscc .\installer\GreeControl.iss
           if ($LASTEXITCODE -ne 0) { throw 'A criação do instalador falhou.' }
 
+      - name: Generate Windows update metadata
+        shell: pwsh
+        run: |
+          $installer = Get-Item .\installer-output\GreeControl-Setup-x64.exe
+          @{
+            version = (Get-Content VERSION -Raw).Trim()
+            sha256 = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          } | ConvertTo-Json -Compress | Set-Content .\installer-output\windows-x64-update.json -Encoding utf8
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -67,4 +76,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           make_latest: true
-          files: installer-output/GreeControl-Setup-x64.exe
+          fail_on_unmatched_files: true
+          files: |
+            installer-output/GreeControl-Setup-x64.exe
+            installer-output/windows-x64-update.json

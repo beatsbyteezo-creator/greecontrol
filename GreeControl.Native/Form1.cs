@@ -22,6 +22,8 @@ public sealed class Form1 : Form
     private Process? bridge;
     private bool reallyExit;
     private readonly System.Windows.Forms.Timer assistantMonitor = new() { Interval = 30_000 };
+    private readonly System.Windows.Forms.Timer updateMonitor = new() { Interval = 15 * 60_000 };
+    private bool checkingUpdate;
     private bool webPageReady;
     private string? pendingUpdateNotice;
     private string? pendingUpdateAction;
@@ -48,12 +50,14 @@ public sealed class Form1 : Form
             if (webPageReady && browser.CoreWebView2 is not null)
                 _ = browser.CoreWebView2.ExecuteScriptAsync("(async()=>{await window.greeActions?.refreshStatus?.();window.greeAssistantBackgroundCheck?.();window.greeAutomationTick?.()})()");
         };
+        updateMonitor.Tick += async (_, _) => await CheckForUpdatesAsync();
         Controls.Add(browser);
         Load += (_, _) => PositionAboveClock();
         Load += LoadApp;
         FormClosed += (_, _) =>
         {
             assistantMonitor.Dispose();
+            updateMonitor.Dispose();
             trayIcon.Visible = false;
             trayIcon.Dispose();
             trayMenu.Dispose();
@@ -276,7 +280,8 @@ public sealed class Form1 : Form
             };
             browser.CoreWebView2.Navigate(url);
             assistantMonitor.Start();
-            _ = ReleaseUpdater.CheckForUpdateAsync(ShowUpdateNotice);
+            updateMonitor.Start();
+            _ = CheckForUpdatesAsync();
         }
         catch (Exception ex)
         {
@@ -285,6 +290,26 @@ public sealed class Form1 : Form
             reallyExit = true;
             trayIcon.Visible = false;
             Close();
+        }
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (checkingUpdate || IsDisposed)
+            return;
+
+        checkingUpdate = true;
+        try
+        {
+            await ReleaseUpdater.CheckForUpdateAsync((message, action, persistent) =>
+            {
+                if (!IsDisposed)
+                    ShowUpdateNotice(message, action, persistent);
+            });
+        }
+        finally
+        {
+            checkingUpdate = false;
         }
     }
 

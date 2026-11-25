@@ -8,6 +8,7 @@ namespace GreeControl.Native;
 internal static class ReleaseUpdater
 {
     private const string Repository = "beatsbyteezo-creator/GreeControl";
+    private const string Releases = "https://github.com/" + Repository + "/releases";
     private const string InstallerAsset = "GreeControl-Setup-x64.exe";
     private static readonly HttpClient Client = CreateClient();
     private static string? pendingInstallerPath;
@@ -17,7 +18,6 @@ internal static class ReleaseUpdater
         // The full Windows installer is about 72 MB; allow slower Wi-Fi enough time.
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("GreeControl", Application.ProductVersion));
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }
 
@@ -25,38 +25,29 @@ internal static class ReleaseUpdater
     {
         try
         {
-            using var response = await Client.GetAsync($"https://api.github.com/repos/{Repository}/releases/latest");
-            if (!response.IsSuccessStatusCode) return;
-            using var release = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if (pendingInstallerPath is not null)
+                return;
+
+            using var metadataTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            using var response = await Client.GetAsync($"{Releases}/latest/download/windows-x64-update.json", metadataTimeout.Token);
+            response.EnsureSuccessStatusCode();
+            using var release = JsonDocument.Parse(await response.Content.ReadAsStringAsync(metadataTimeout.Token));
             var root = release.RootElement;
-            if (!root.TryGetProperty("tag_name", out var tagValue) ||
-                !Version.TryParse(tagValue.GetString()?.TrimStart('v', 'V'), out var latest) ||
+            if (!root.TryGetProperty("version", out var tagValue) ||
+                !Version.TryParse(tagValue.GetString(), out var latest) ||
                 !Version.TryParse(Application.ProductVersion.Split('+')[0], out var current) || latest <= current)
                 return;
 
-            updateStatus($"Atualização {latest} encontrada. Preparando download…", "Baixando…", true);
-
-            if (!root.TryGetProperty("assets", out var assets))
-            {
-                updateStatus("O instalador desta atualização ainda não está disponível.", null, false);
-                return;
-            }
-            var asset = assets.EnumerateArray().FirstOrDefault(item =>
-                item.TryGetProperty("name", out var name) && name.GetString() == InstallerAsset);
-            if (asset.ValueKind != JsonValueKind.Object ||
-                !asset.TryGetProperty("browser_download_url", out var urlValue) ||
-                !asset.TryGetProperty("digest", out var digestValue))
-            {
-                updateStatus("O instalador desta atualização ainda não está disponível.", null, false);
-                return;
-            }
-            var digest = digestValue.GetString();
-            var url = urlValue.GetString();
-            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(digest) || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+            var sha256 = root.TryGetProperty("sha256", out var hash) ? hash.GetString() : null;
+            if (sha256 is null || sha256.Length != 64 || !sha256.All(Uri.IsHexDigit))
             {
                 updateStatus("A atualização foi encontrada, mas não foi possível validar os dados do instalador.", null, false);
                 return;
             }
+
+            var digest = "sha256:" + sha256;
+            var url = $"{Releases}/download/v{latest}/{InstallerAsset}";
+            updateStatus($"Atualização {latest} encontrada. Preparando download…", "Baixando…", true);
 
             var updateDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GreeControl", "Updates");
             Directory.CreateDirectory(updateDirectory);
