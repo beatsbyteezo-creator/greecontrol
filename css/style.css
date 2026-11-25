@@ -258,12 +258,26 @@ body{background:transparent}
   -webkit-backdrop-filter:blur(22px) saturate(1.12);
   box-shadow:inset 0 1px rgba(255,255,255,.09);
 }
-html[data-desktop-acrylic],html[data-desktop-acrylic] body{background:transparent}
-html[data-native-panel] .app{border:0;border-radius:0}
+html[data-native-panel] .app{border:0;border-radius:28px}
+html[data-wallpaper-glass] .app{
+  isolation:isolate;
+  background:linear-gradient(160deg,rgba(9,19,26,.25),rgba(8,19,26,.48));
+}
+html[data-wallpaper-glass] .app::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  z-index:-1;
+  pointer-events:none;
+  background:linear-gradient(160deg,rgba(12,22,30,.36),rgba(12,24,32,.54)),var(--desktop-wallpaper) center/cover;
+  filter:blur(15px) saturate(1.2);
+  transform:scale(1.055);
+}
 #hidePanel{display:none}
 html[data-native-panel] #hidePanel{display:grid}
 @media(prefers-reduced-transparency:reduce){
-  html[data-desktop-acrylic] .app,.app{background:#19232d}
+  html[data-wallpaper-glass] .app,.app{background:#19232d}
+  html[data-wallpaper-glass] .app::before{display:none}
   .card,.chip,.nav,.view-panel{
     background:#293942;
     backdrop-filter:none;
