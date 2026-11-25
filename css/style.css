@@ -259,7 +259,9 @@ body{background:transparent}
   box-shadow:inset 0 1px rgba(255,255,255,.09);
 }
 html[data-desktop-acrylic],html[data-desktop-acrylic] body{background:transparent}
-html[data-desktop-acrylic] .app{border:0;border-radius:0}
+html[data-native-panel] .app{border:0;border-radius:0}
+#hidePanel{display:none}
+html[data-native-panel] #hidePanel{display:grid}
 @media(prefers-reduced-transparency:reduce){
   html[data-desktop-acrylic] .app,.app{background:#19232d}
   .card,.chip,.nav,.view-panel{

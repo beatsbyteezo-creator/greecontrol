@@ -8,7 +8,7 @@ Baixe `GreeControl-Setup-x64.exe` na página **Releases** do GitHub e execute. O
 
 Ao abrir, o aplicativo consulta a versão estável mais recente do repositório público. Se encontrar uma versão mais nova, valida o SHA-256 publicado pelo GitHub, instala em modo silencioso e reabre o Gree Control.
 
-A janela aparece na barra de tarefas e pode ser movida, redimensionada ou minimizada. Ao fechar, o aplicativo fica na bandeja para manter o acesso pelo iPhone e as rotinas. Para encerrar, use **Sair** no menu do ícone da bandeja. As sugestões do Assistente aparecem na aba **Assistente**.
+O painel abre acima do relógio do Windows. Use o ícone da bandeja para abrir o painel e o botão de fechar para ocultá-lo. Na bandeja, o aplicativo mantém o acesso pelo iPhone e as rotinas. Para encerrar, use **Sair** no menu do ícone da bandeja. As sugestões do Assistente aparecem na aba **Assistente**.
 
 ## Usar como app no iPhone
 

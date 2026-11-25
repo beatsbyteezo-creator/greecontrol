@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -41,9 +42,10 @@ public sealed class Form1 : Form
     {
         Text = "Gree Control";
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(446, 760);
-        StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(360, 440);
+        FormBorderStyle = FormBorderStyle.None;
+        ShowInTaskbar = false;
+        TopMost = true;
+        StartPosition = FormStartPosition.Manual;
         BackColor = Color.FromArgb(18, 20, 27);
         var iconPath = Path.Combine(AppContext.BaseDirectory, "gree-control.ico");
         Icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
@@ -58,6 +60,7 @@ public sealed class Form1 : Form
                 _ = browser.CoreWebView2.ExecuteScriptAsync("(async()=>{await window.greeActions?.refreshStatus?.();window.greeAssistantBackgroundCheck?.();window.greeAutomationTick?.()})()");
         };
         Controls.Add(browser);
+        Load += (_, _) => PositionAboveClock();
         Load += LoadApp;
         FormClosed += (_, _) =>
         {
@@ -84,9 +87,8 @@ public sealed class Form1 : Form
 
     private void RestoreFromTray()
     {
+        PositionAboveClock();
         Show();
-        if (WindowState == FormWindowState.Minimized)
-            WindowState = FormWindowState.Normal;
         Activate();
         browser.Focus();
     }
@@ -97,12 +99,45 @@ public sealed class Form1 : Form
         Close();
     }
 
-    protected override void OnShown(EventArgs e)
+    private void PositionAboveClock()
     {
-        var area = Screen.FromControl(this).WorkingArea;
-        Size = new Size(Math.Min(Width, area.Width), Math.Min(Height, area.Height));
-        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
-        base.OnShown(e);
+        var area = (Screen.PrimaryScreen ?? Screen.FromControl(this)).WorkingArea;
+        var inset = ScaleLogicalPixels(8);
+        var width = Math.Min(ScaleLogicalPixels(446), Math.Max(1, area.Width - inset * 2));
+        var height = Math.Min(ScaleLogicalPixels(760), Math.Max(1, area.Height - inset * 2));
+        SetBounds(area.Right - width - inset, area.Bottom - height - inset, width, height);
+    }
+
+    private int ScaleLogicalPixels(int pixels) => (int)Math.Round(pixels * DeviceDpi / 96.0);
+
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (ClientSize.Width == 0 || ClientSize.Height == 0)
+            return;
+
+        var diameter = Math.Min(ScaleLogicalPixels(56), Math.Min(ClientSize.Width, ClientSize.Height));
+        var right = ClientSize.Width - diameter;
+        var bottom = ClientSize.Height - diameter;
+        using var outline = new GraphicsPath();
+        outline.AddArc(0, 0, diameter, diameter, 180, 90);
+        outline.AddArc(right, 0, diameter, diameter, 270, 90);
+        outline.AddArc(right, bottom, diameter, diameter, 0, 90);
+        outline.AddArc(0, bottom, diameter, diameter, 90, 90);
+        outline.CloseFigure();
+
+        var oldRegion = Region;
+        Region = new Region(outline);
+        oldRegion?.Dispose();
+    }
+
+    protected override void WndProc(ref Message message)
+    {
+        const int DisplayChange = 0x007E;
+        const int SettingChange = 0x001A;
+        base.WndProc(ref message);
+        if (Visible && message.Msg is DisplayChange or SettingChange)
+            PositionAboveClock();
     }
 
     private bool TryEnableDesktopAcrylic()
@@ -165,6 +200,8 @@ public sealed class Form1 : Form
                 await browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
                     "document.addEventListener('DOMContentLoaded', () => document.documentElement.setAttribute('data-desktop-acrylic', ''), { once: true });");
             }
+            await browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                "document.addEventListener('DOMContentLoaded', () => document.documentElement.setAttribute('data-native-panel', ''), { once: true });");
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             browser.CoreWebView2.Settings.AreDevToolsEnabled = false;
             browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -190,6 +227,12 @@ public sealed class Form1 : Form
             browser.CoreWebView2.WebMessageReceived += (_, message) =>
             {
                 var text = message.TryGetWebMessageAsString();
+                if (text == "hide-panel")
+                {
+                    HideToTray();
+                    return;
+                }
+
                 if (text == "install-update")
                 {
                     _ = ReleaseUpdater.InstallPending(ShowUpdateNotice, () =>
