@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Text.Json;
@@ -8,64 +7,23 @@ namespace GreeControl.Native;
 
 public sealed class Form1 : Form
 {
-    [DllImport("gdi32.dll", SetLastError = true)]
-    private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-
-    [DllImport("gdi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DeleteObject(IntPtr hObject);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRect
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
     private readonly WebView2 browser = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(18, 20, 27) };
     private readonly NotifyIcon trayIcon;
     private Process? bridge;
     private bool reallyExit;
     private readonly System.Windows.Forms.Timer assistantMonitor = new() { Interval = 30_000 };
-    private readonly System.Windows.Forms.Timer windowMotion = new() { Interval = 15 };
-    private readonly System.Windows.Forms.Timer foregroundMonitor = new() { Interval = 80 };
-    private readonly Stopwatch windowMotionWatch = new();
-    private AssistantToastForm? assistantToast;
     private bool webPageReady;
     private string? pendingUpdateNotice;
     private string? pendingUpdateAction;
     private bool pendingUpdatePersistent;
-    private bool openAssistantWhenReady;
-    private bool exitAfterMotion;
-    private WindowMotionState windowMotionState;
-    private Point motionStart;
-    private Point motionTarget;
-    private Point motionAnchor;
-    private double opacityStart;
-    private double opacityTarget;
-    private int motionDuration;
-
-    private enum WindowMotionState { None, Opening, Closing }
 
     public Form1()
     {
         Text = "Gree Control";
-        FormBorderStyle = FormBorderStyle.None;
-        ShowInTaskbar = false;
-        TopMost = true;
-        StartPosition = FormStartPosition.Manual;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        KeyPreview = true;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(446, 760);
+        StartPosition = FormStartPosition.CenterScreen;
+        MinimumSize = new Size(360, 440);
         BackColor = Color.FromArgb(18, 20, 27);
         var iconPath = Path.Combine(AppContext.BaseDirectory, "gree-control.ico");
         Icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
@@ -74,25 +32,21 @@ public sealed class Form1 : Form
         trayMenu.Items.Add("Sair", null, (_, _) => ExitFromTray());
         trayIcon = new NotifyIcon { Text = "Gree Control", Icon = Icon, ContextMenuStrip = trayMenu, Visible = true };
         trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) RestoreFromTray(); };
-        Deactivate += (_, _) =>
-        {
-            BeginInvoke(() =>
-            {
-                if (Visible && !ContainsFocus && !IsGreeWindowForeground())
-                    HideToTray();
-            });
-        };
-        windowMotion.Tick += AnimateWindowFrame;
-        foregroundMonitor.Tick += CheckForegroundWindow;
         assistantMonitor.Tick += (_, _) =>
         {
-            if (browser.CoreWebView2 is not null)
+            if (webPageReady && browser.CoreWebView2 is not null)
                 _ = browser.CoreWebView2.ExecuteScriptAsync("(async()=>{await window.greeActions?.refreshStatus?.();window.greeAssistantBackgroundCheck?.();window.greeAutomationTick?.()})()");
         };
         Controls.Add(browser);
         Load += LoadApp;
-        FormClosed += (_, _) => { assistantMonitor.Stop(); assistantMonitor.Dispose(); foregroundMonitor.Stop(); foregroundMonitor.Dispose(); windowMotion.Stop(); windowMotion.Dispose(); assistantToast?.Close(); trayIcon.Visible = false; trayIcon.Dispose(); StopBridge(); };
-        KeyDown += (_, e) => { if (e.KeyCode == Keys.Escape) HideToTray(); };
+        FormClosed += (_, _) =>
+        {
+            assistantMonitor.Dispose();
+            trayIcon.Visible = false;
+            trayIcon.Dispose();
+            trayMenu.Dispose();
+            StopBridge();
+        };
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -106,172 +60,29 @@ public sealed class Form1 : Form
         base.OnFormClosing(e);
     }
 
-    private void HideToTray()
-    {
-        if (!Visible) return;
-        if (!exitAfterMotion) StartWindowMotion(opening: false);
-    }
+    private void HideToTray() => Hide();
 
     private void RestoreFromTray()
     {
-        var wasHidden = !Visible;
-        WindowState = FormWindowState.Normal;
-        exitAfterMotion = false;
-        var anchor = GetWindowAnchor();
-        if (wasHidden)
-        {
-            Location = new Point(anchor.X, anchor.Y + 48);
-            Opacity = .08;
-            Show();
-            StartWindowMotion(opening: true, anchor);
-        }
-        else if (windowMotionState == WindowMotionState.Closing)
-            StartWindowMotion(opening: true, anchor);
-        BringToFront();
+        Show();
+        if (WindowState == FormWindowState.Minimized)
+            WindowState = FormWindowState.Normal;
         Activate();
         browser.Focus();
     }
 
-    private Point GetWindowAnchor()
-    {
-        var area = Screen.PrimaryScreen?.WorkingArea ?? Screen.FromPoint(Cursor.Position).WorkingArea;
-        return new Point(area.Right - Width, area.Bottom - Height);
-    }
-
-    private void StartWindowMotion(bool opening, Point? anchor = null)
-    {
-        foregroundMonitor.Stop();
-        windowMotion.Stop();
-        motionAnchor = anchor ?? GetWindowAnchor();
-        motionStart = Location;
-        motionTarget = opening ? motionAnchor : new Point(motionAnchor.X, motionAnchor.Y + 48);
-        opacityStart = Opacity;
-        opacityTarget = opening ? 1 : .08;
-        motionDuration = 280;
-        windowMotionState = opening ? WindowMotionState.Opening : WindowMotionState.Closing;
-        windowMotionWatch.Restart();
-        windowMotion.Start();
-    }
-
-    private void AnimateWindowFrame(object? sender, EventArgs e)
-    {
-        if (windowMotionState == WindowMotionState.None) return;
-        var progress = Math.Clamp(windowMotionWatch.Elapsed.TotalMilliseconds / motionDuration, 0, 1);
-        var eased = windowMotionState == WindowMotionState.Opening
-            ? 1 - Math.Pow(1 - progress, 3)
-            : progress * progress * progress;
-        Location = new Point(
-            (int)Math.Round(motionStart.X + (motionTarget.X - motionStart.X) * eased),
-            (int)Math.Round(motionStart.Y + (motionTarget.Y - motionStart.Y) * eased));
-        Opacity = opacityStart + (opacityTarget - opacityStart) * eased;
-        if (progress < 1) return;
-
-        windowMotion.Stop();
-        windowMotionWatch.Stop();
-        var finishedState = windowMotionState;
-        windowMotionState = WindowMotionState.None;
-        if (finishedState == WindowMotionState.Opening)
-        {
-            Location = motionAnchor;
-            Opacity = 1;
-            foregroundMonitor.Start();
-            return;
-        }
-
-        Hide();
-        Location = motionAnchor;
-        Opacity = 1;
-        if (exitAfterMotion)
-        {
-            exitAfterMotion = false;
-            reallyExit = true;
-            trayIcon.Visible = false;
-            Close();
-        }
-    }
-
-    private void CheckForegroundWindow(object? sender, EventArgs e)
-    {
-        if (!Visible || windowMotionState != WindowMotionState.None || !IsHandleCreated)
-            return;
-
-        if (!IsGreeWindowForeground()) HideToTray();
-    }
-
-    private bool IsGreeWindowForeground()
-    {
-        var foreground = GetForegroundWindow();
-        if (foreground == Handle) return true;
-        return assistantToast is { IsDisposed: false, Visible: true } toast &&
-            (foreground == toast.Handle || toast.ContainsFocus);
-    }
-
     private void ExitFromTray()
     {
-        if (!Visible)
-        {
-            reallyExit = true;
-            trayIcon.Visible = false;
-            Close();
-            return;
-        }
-
-        exitAfterMotion = true;
-        StartWindowMotion(opening: false);
+        reallyExit = true;
+        Close();
     }
 
     protected override void OnShown(EventArgs e)
     {
-        var area = Screen.PrimaryScreen?.WorkingArea ?? Screen.FromPoint(Cursor.Position).WorkingArea;
-        Size = new Size(Math.Min(446, area.Width), Math.Min(760, area.Height));
-        Location = new Point(area.Right - Width, area.Bottom - Height);
+        var area = Screen.FromControl(this).WorkingArea;
+        Size = new Size(Math.Min(Width, area.Width), Math.Min(Height, area.Height));
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
         base.OnShown(e);
-        ApplyRoundedCorners();
-        foregroundMonitor.Start();
-    }
-
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        if (IsHandleCreated && Width > 0 && Height > 0)
-            ApplyRoundedCorners();
-    }
-
-    private void ApplyRoundedCorners()
-    {
-        ApplyRoundedRegion(this, 38);
-        // WebView2 paints through its own native child window. Clip that surface too,
-        // otherwise its square corners can leak past the rounded Form region.
-        if (browser.IsHandleCreated)
-            ApplyRoundedRegion(browser, 38);
-    }
-
-    private static void ApplyRoundedRegion(Control control, int logicalRadius)
-    {
-        if (!control.IsHandleCreated || !GetWindowRect(control.Handle, out var rect))
-            return;
-
-        var physicalWidth = rect.Right - rect.Left;
-        var physicalHeight = rect.Bottom - rect.Top;
-        if (physicalWidth <= 0 || physicalHeight <= 0)
-            return;
-
-        var radius = Math.Max(18, (int)Math.Round((double)logicalRadius * control.DeviceDpi / 96d));
-        var regionHandle = CreateRoundRectRgn(0, 0, physicalWidth, physicalHeight, radius * 2, radius * 2);
-        if (regionHandle != IntPtr.Zero)
-        {
-            try
-            {
-                var roundedRegion = Region.FromHrgn(regionHandle);
-                var previousRegion = control.Region;
-                control.Region = roundedRegion;
-                previousRegion?.Dispose();
-            }
-            finally
-            {
-                _ = DeleteObject(regionHandle);
-            }
-        }
     }
 
     private async void LoadApp(object? sender, EventArgs e)
@@ -304,6 +115,11 @@ public sealed class Form1 : Form
             if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http://127.0.0.1:", StringComparison.Ordinal))
                 throw new InvalidOperationException("Não foi possível iniciar a ponte local do Gree.");
 
+            // Keep draining both streams so the bridge cannot block on a full pipe.
+            bridge.ErrorDataReceived += (_, _) => { };
+            bridge.BeginErrorReadLine();
+            _ = DrainBridgeOutputAsync(bridge.StandardOutput);
+
             await browser.EnsureCoreWebView2Async();
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             browser.CoreWebView2.Settings.AreDevToolsEnabled = false;
@@ -330,7 +146,6 @@ public sealed class Form1 : Form
             browser.CoreWebView2.WebMessageReceived += (_, message) =>
             {
                 var text = message.TryGetWebMessageAsString();
-                if (text == "close-app") { Close(); return; }
                 if (text == "install-update")
                 {
                     _ = ReleaseUpdater.InstallPending(ShowUpdateNotice, () =>
@@ -341,32 +156,6 @@ public sealed class Form1 : Form
                     });
                     return;
                 }
-                try
-                {
-                    using var payload = JsonDocument.Parse(text);
-                    if (payload.RootElement.TryGetProperty("type", out var kind) && kind.GetString() == "assistant-toast")
-                    {
-                        var title = payload.RootElement.TryGetProperty("title", out var titleValue) ? titleValue.GetString() ?? "Gree Assistente" : "Gree Assistente";
-                        var body = payload.RootElement.TryGetProperty("body", out var bodyValue) ? bodyValue.GetString() ?? "Há uma nova sugestão de conforto." : "Há uma nova sugestão de conforto.";
-                        ShowAssistantToast(title, body);
-                    }
-                    else if (kind.GetString() == "connection-lost")
-                        ShowAssistantToast("Gree desconectado", "A conexão caiu. Estou tentando reconectar pela rede local.");
-                    else if (kind.GetString() == "connection-restored")
-                        ShowAssistantToast("Gree reconectado", "O controle voltou a responder pela rede local.");
-                    else if (kind.GetString() == "assistant-device-state")
-                    {
-                        var connected = payload.RootElement.TryGetProperty("connected", out var connectedValue) && connectedValue.GetBoolean();
-                        if (connected)
-                        {
-                            var on = payload.RootElement.TryGetProperty("on", out var onValue) && onValue.GetBoolean();
-                            var temp = payload.RootElement.TryGetProperty("temp", out var tempValue) ? tempValue.GetInt32() : 0;
-                            var mode = payload.RootElement.TryGetProperty("mode", out var modeValue) ? modeValue.GetString() ?? "" : "";
-                            if (assistantToast is not null) assistantToast.DeviceSummary = $"Gree {(on ? "ligado" : "desligado")} · {temp}°C · {mode}";
-                        }
-                    }
-                }
-                catch (JsonException) { }
             };
             browser.CoreWebView2.NavigationCompleted += (_, navigation) =>
             {
@@ -380,7 +169,6 @@ public sealed class Form1 : Form
                     pendingUpdateAction = null;
                     ShowUpdateNotice(message, action, persistent);
                 }
-                if (webPageReady && openAssistantWhenReady) OpenAssistantPage();
             };
             browser.CoreWebView2.Navigate(url);
             assistantMonitor.Start();
@@ -415,36 +203,15 @@ public sealed class Form1 : Form
         _ = browser.CoreWebView2.ExecuteScriptAsync($"window.greeUpdateNotice?.({encodedMessage},{encodedAction},{persistent.ToString().ToLowerInvariant()})");
     }
 
-    private void ShowAssistantToast(string title, string body)
+    private static async Task DrainBridgeOutputAsync(StreamReader output)
     {
-        assistantToast?.Close();
-        assistantToast = new AssistantToastForm(title, body, () =>
+        try
         {
-            OpenAssistantPage();
-        }, OpenControlPage, ApplyAssistantRecommendation, ToggleGreePower);
-        assistantToast.Show();
+            while (await output.ReadLineAsync() is not null) { }
+        }
+        catch (IOException) { }
+        catch (ObjectDisposedException) { }
     }
-
-    private void OpenAssistantPage()
-    {
-        RestoreFromTray();
-        openAssistantWhenReady = true;
-        if (!webPageReady || browser.CoreWebView2 is null) return;
-        openAssistantWhenReady = false;
-        _ = browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.nav button[data-view=assistant]')?.click();setTimeout(()=>{document.querySelector('#assistantChatForm')?.scrollIntoView({block:'end',behavior:'smooth'});document.querySelector('#assistantChatInput')?.focus()},220)");
-    }
-
-    private void OpenControlPage()
-    {
-        RestoreFromTray();
-        openAssistantWhenReady = false;
-        if (webPageReady && browser.CoreWebView2 is not null)
-            _ = browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.nav button[data-view=control]')?.click()");
-    }
-
-    private void ApplyAssistantRecommendation() => _ = browser.CoreWebView2?.ExecuteScriptAsync("window.greeAssistantApplyFromBubble?.()");
-
-    private void ToggleGreePower() => _ = browser.CoreWebView2?.ExecuteScriptAsync("window.greeActions?.togglePower?.()");
 
     private void StopBridge()
     {

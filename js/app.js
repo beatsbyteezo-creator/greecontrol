@@ -70,10 +70,6 @@ $("#fanSlider").oninput=e=>{st.f=Number(e.target.value);render()};
 $("#velBtn").onclick=()=>{st.f=(st.f+1)%4;render()};
 $(".fan .v").onclick=()=>{st.f=(st.f+1)%4;render()};
 $("#pw").onclick=()=>{st.on=!st.on;render()};
-$("#closeApp").onclick=()=>{
-  if(window.chrome?.webview)window.chrome.webview.postMessage("close-app");
-  else window.close();
-};
 $$(".chip").forEach(c=>c.onclick=()=>c.classList.toggle("on"));
 {const vc=$('.chip[data-t="aletas"]');vc.onclick=()=>{st.vane=(st.vane+1)%5;vc.classList.toggle("on",st.vane>0);$("#vaneT").textContent=["Auto","Balanço","Alto","Médio","Baixo"][st.vane]}}
 $$('.nav button').forEach(button=>button.onclick=()=>{

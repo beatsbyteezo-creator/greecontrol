@@ -58,7 +58,7 @@ html,body{width:100%;height:100%;min-height:0;overflow:hidden;background:#10131a
 body{display:block}
 .app{display:flex;flex-direction:column;width:100%;height:100dvh;min-height:0;max-width:none;margin:0;border:0;border-radius:22px;padding:12px;background:radial-gradient(120% 75% at 0% 0%,rgba(210,229,255,.16),transparent 62%),radial-gradient(100% 70% at 100% 100%,rgba(94,142,205,.11),transparent 60%),linear-gradient(145deg,rgba(42,49,62,.91),rgba(22,26,35,.94) 54%,rgba(15,18,25,.97));box-shadow:inset 0 1px 0 #ffffff35,inset 0 -1px 0 #ffffff0d,0 18px 48px #0007;backdrop-filter:blur(30px) saturate(1.25);-webkit-backdrop-filter:blur(30px) saturate(1.25);overflow:hidden}
 .top{align-items:center}.ib{width:36px;height:36px;border:0}.pw{position:static}
-.close-app{font-size:23px;line-height:1;color:var(--mut)}
+
 .scene{height:auto;min-height:94px;max-height:30dvh;flex:1 1 0;margin:0;overflow:hidden}
 .top,.status,.modes,.temp,.fan,.chips,.nav,#connection{flex:0 0 auto}
 .card,.chip,.mode,.mode span,.round{border:0;box-shadow:none}
@@ -89,7 +89,7 @@ button:disabled{opacity:.45;cursor:default}
 .temp-window{display:inline-block;position:relative;overflow:hidden;height:1.08em;min-width:2ch;vertical-align:middle;perspective:100px}.temperature-value{display:block;line-height:1.08;transition:transform .22s cubic-bezier(.22,.8,.25,1),opacity .18s ease,filter .22s ease;will-change:transform,opacity}.temp-window .incoming{position:absolute;inset:0;transform:translateY(100%);opacity:0;filter:blur(2px)}.temp-window .outgoing{position:relative;transform:translateY(0);opacity:1}.temp-window.rolling[data-direction="up"] .outgoing{transform:translateY(-105%);opacity:0;filter:blur(2px)}.temp-window.rolling[data-direction="up"] .incoming{transform:translateY(0);opacity:1;filter:blur(0)}.temp-window.rolling[data-direction="down"] .outgoing{transform:translateY(105%);opacity:0;filter:blur(2px)}.temp-window.rolling[data-direction="down"] .incoming{transform:translateY(0);opacity:1;filter:blur(0)}
 .temp-track-wrap{position:relative;display:flex;align-items:center;min-height:17px}.temp-slider{height:17px;margin:0}.temp-slider::-webkit-slider-runnable-track,.temp-slider::-moz-range-track{height:9px}
 .fan{display:flex;align-items:center;gap:9px;padding:7px 11px}.fan>svg{width:24px;height:24px}.fan .m{flex:1;min-width:0;font-size:10px}.fan-title{line-height:1.15;margin-bottom:3px;color:rgba(222,232,248,.67);font-size:9px;white-space:nowrap}.fan-track-wrap{position:relative;height:13px;display:flex;align-items:center}.fan-segments{display:flex;align-items:center;gap:4px;width:100%;height:10px;padding:0 1px;pointer-events:none}.fan-segments i{height:7px;flex:1;border-radius:999px;transform:skewX(-22deg);background:linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.055));box-shadow:inset 0 1px rgba(255,255,255,.06);transition:background .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease,transform .28s ease}.fan-segments i.lit{background:linear-gradient(110deg,#2f83ee,#71b9ff);box-shadow:0 0 9px rgba(76,157,255,.2),inset 0 1px rgba(255,255,255,.3);transform:skewX(-22deg) scaleY(1.08)}.fan-slider{position:absolute;inset:-5px 0;width:100%;height:24px;margin:0;opacity:0;z-index:1;cursor:pointer;touch-action:none}.fan .v{display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}.fan .v svg{width:15px;height:15px}
-.close-app{color:rgba(226,235,248,.74);background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.025));box-shadow:inset 0 1px #ffffff16,0 4px 12px #0003;transition:color .2s ease,background .2s ease,transform .2s ease,box-shadow .2s ease}.close-app svg{width:17px;height:17px;stroke-width:2}.close-app:hover{color:#fff;background:linear-gradient(145deg,rgba(255,103,118,.3),rgba(255,103,118,.12));box-shadow:inset 0 1px #ffffff24,0 0 15px rgba(255,90,105,.19)}.close-app:active{transform:scale(.92)}
+
 
 /* Four clear fan levels and more breathing room for the primary temperature control. */
 .scene{max-height:26dvh;min-height:88px}
@@ -132,12 +132,12 @@ button:disabled{opacity:.45;cursor:default}
 .app[data-sleep="true"] .chip[data-t="sono"] svg{animation:gree-moon-rock 3.8s ease-in-out infinite;transform-origin:center}
 .app[data-eco="true"] .chip[data-t="eco"] svg{animation:gree-leaf-sway 3s ease-in-out infinite;transform-origin:40% 80%}
 .app[data-vane="true"] .vane-icon .slat{transform-box:fill-box;transform-origin:center;animation:gree-vane-swing 1.9s ease-in-out infinite}.app[data-vane="true"] .vane-icon .slat:nth-child(2){animation-delay:-.63s}.app[data-vane="true"] .vane-icon .slat:nth-child(3){animation-delay:-1.26s}
-.ib svg,.nav button svg,.chip svg,.mode svg,.sel svg{transition:transform .28s cubic-bezier(.2,.8,.2,1),filter .28s ease}.ib:hover:not(.close-app) svg{transform:translateY(-1px) scale(1.08)}.ib#pw:hover svg{transform:rotate(12deg) scale(1.06)}.close-app:hover svg{transform:rotate(90deg)}.nav button:hover svg{transform:translateY(-2px)}.nav button[data-view="details"]:hover svg{animation:gree-chart-grow .65s ease-in-out}.nav button[data-view="settings"]:hover svg{transform:rotate(24deg)}.chip:hover svg{transform:scale(1.1)}.mode:active span{transform:none}.sel:hover .ch,.fan .v:hover svg{transform:rotate(180deg)}
+.ib svg,.nav button svg,.chip svg,.mode svg,.sel svg{transition:transform .28s cubic-bezier(.2,.8,.2,1),filter .28s ease}.ib:hover svg{transform:translateY(-1px) scale(1.08)}.ib#pw:hover svg{transform:rotate(12deg) scale(1.06)}.nav button:hover svg{transform:translateY(-2px)}.nav button[data-view="details"]:hover svg{animation:gree-chart-grow .65s ease-in-out}.nav button[data-view="settings"]:hover svg{transform:rotate(24deg)}.chip:hover svg{transform:scale(1.1)}.mode:active span{transform:none}.sel:hover .ch,.fan .v:hover svg{transform:rotate(180deg)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* Final alignment and stateful motion refinements. */
-.top-actions{display:flex;align-items:center;gap:8px}.top-actions .ib{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;margin:0;padding:0;position:relative;inset:auto}.close-app{align-self:center;justify-self:center;overflow:hidden}.close-app svg{display:block;width:16px;height:16px;margin:0;transform-origin:50% 50%}
-.close-app:hover svg{transform:none!important}
+.top-actions{display:flex;align-items:center;gap:8px}.top-actions .ib{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;margin:0;padding:0;position:relative;inset:auto}
+
 .nav{display:flex;align-items:stretch;justify-content:stretch}.nav button{flex:1 1 0;min-width:0;min-height:54px;justify-content:center;gap:5px;padding:6px 2px 5px;line-height:1.1;white-space:nowrap}.nav button svg{flex:0 0 20px;width:20px;height:20px}.nav button:hover svg{transform:none}.nav button[data-view="settings"]:hover svg{animation:gree-gear-settle .3s ease-out}
 @keyframes gree-gear-settle{0%{transform:scale(.9);opacity:.7}65%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
 .fan-icon{transform-origin:50% 50%;transition:none!important;animation:none!important}.mode[data-m="3"] svg{animation:none!important}
@@ -158,9 +158,9 @@ button:disabled{opacity:.45;cursor:default}
 /* Header close control is anchored to the same fixed square as its neighbours. */
 .top-actions{margin-left:auto;flex:0 0 auto;gap:8px;padding:0 1px 0 0}
 .top-actions .ib{box-sizing:border-box;flex:0 0 36px;width:36px;height:36px;min-width:36px;min-height:36px;margin:0;padding:0;align-self:center;transform:none}
-#closeApp{position:relative;display:grid;place-items:center;line-height:0;overflow:hidden}
-#closeApp svg{position:absolute;display:block;width:23px;height:23px;inset:0;margin:auto;transform:none!important;stroke-width:2.2}
-#closeApp:hover,#closeApp:active{transform:none}
+
+
+
 .app[data-view="assistant"] .scene,.app[data-view="assistant"] .status,.app[data-view="assistant"] .modes,.app[data-view="assistant"] .temp,.app[data-view="assistant"] .fan,.app[data-view="assistant"] .chips{display:none}
 .app[data-view="assistant"] #assistantView{display:flex;flex-direction:column;gap:13px}
 .assistant-panel{font-size:12px}

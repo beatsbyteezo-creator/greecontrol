@@ -8,6 +8,8 @@ Baixe `GreeControl-Setup-x64.exe` na página **Releases** do GitHub e execute. O
 
 Ao abrir, o aplicativo consulta a versão estável mais recente do repositório público. Se encontrar uma versão mais nova, valida o SHA-256 publicado pelo GitHub, instala em modo silencioso e reabre o Gree Control.
 
+A janela aparece na barra de tarefas e pode ser movida, redimensionada ou minimizada. Ao fechar, o aplicativo fica na bandeja para manter o acesso pelo iPhone e as rotinas. Para encerrar, use **Sair** no menu do ícone da bandeja. As sugestões do Assistente aparecem na aba **Assistente**.
+
 ## Usar como app no iPhone
 
 O Gree Control também serve a interface pela rede local. Deixe o app aberto no Windows e, na tela **Configurações**, use o endereço exibido em “Gree Control no iPhone”. O iPhone e o PC precisam estar na mesma rede Wi-Fi; redes de convidados podem bloquear a comunicação entre aparelhos.

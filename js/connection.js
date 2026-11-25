@@ -22,8 +22,7 @@
     }catch(error){pairMessage.textContent=error.message;}
   };
   const controls=$$('#pw,#tempSlider,#velBtn,.mode,#fanSlider,.chip');
-  let state=null, busy=false, reconnectTimer=0, retryDelay=5000, connecting=false, lostNotified=false;
-  const postNative=payload=>{try{window.chrome?.webview?.postMessage(JSON.stringify(payload))}catch{}};
+  let state=null, busy=false, reconnectTimer=0, retryDelay=5000, connecting=false;
   const rememberedIP=()=>{try{return localStorage.getItem('gree.lastIP')||''}catch{return ''}};
   const rememberIP=ip=>{try{if(ip)localStorage.setItem('gree.lastIP',ip)}catch{}};
   st.on=false;
@@ -44,7 +43,6 @@
     $('#lanPairCode').textContent=info.pin;
   }).catch(()=>{});
   function apply(result){
-    const connectionRestored=lostNotified;
     state=result.state;
     st.connected=true;
     st.ip=result.ip||'';
@@ -60,8 +58,6 @@
     $('.chip[data-t="aletas"]').classList.toggle('on',st.vane>0);
     render();
     window.dispatchEvent(new CustomEvent('gree:state',{detail:{connected:true,on:st.on,temp:st.t,mode:st.m,fan:st.f,ip:st.ip}}));
-    postNative({type:'assistant-device-state',connected:true,on:st.on,temp:st.t,mode:modes[st.m].l});
-    if(connectionRestored){lostNotified=false;postNative({type:'connection-restored',title:'Gree reconectado',body:'O controle voltou a responder pela rede local.'})}
     rememberIP(result.ip);
     connection.textContent='Gree conectado · '+result.ip;
     connection.title='Conectado ao aparelho Gree em '+result.ip;
@@ -101,7 +97,6 @@
       if(input.action==='connect')dialog.close();
       return result;
     }catch(error){
-      if(st.connected&&!lostNotified){lostNotified=true;postNative({type:'connection-lost',title:'Gree desconectado',body:'A conexão caiu. Estou tentando reconectar pela rede local.'})}
       message.textContent=error.message;
       connection.title=error.message;
       connection.textContent=input.action==='connect'?'Nao conectado · tentando novamente':'Conexao perdida';
