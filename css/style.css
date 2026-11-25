@@ -237,3 +237,34 @@ button:disabled{filter:none!important;transform:none!important}
 .update-card small{display:block;margin-top:16px;color:#8290a7;font-size:10px;line-height:1.4}
 @media(max-width:380px){.update-card{padding:22px 17px}.update-card h2{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.update-overlay,.update-progress span,.update-notice-action,.update-notice-later{transition:none}}
+
+/* Smoked glass surfaces. The opaque page backdrop also works in the browser. */
+html,body{
+  background:
+    radial-gradient(ellipse at 0% 15%,#384550,transparent 54%),
+    radial-gradient(ellipse at 100% 45%,#1b4959,transparent 59%),
+    #121a23;
+}
+body{background:transparent}
+.app{
+  background:linear-gradient(155deg,rgba(18,24,30,.52),rgba(12,23,32,.65));
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+.card,.chip,.nav,.view-panel{
+  background:linear-gradient(118deg,rgba(57,67,71,.63),rgba(22,43,55,.62));
+  backdrop-filter:blur(22px) saturate(1.12);
+  -webkit-backdrop-filter:blur(22px) saturate(1.12);
+  box-shadow:inset 0 1px rgba(255,255,255,.09);
+}
+html[data-desktop-acrylic],html[data-desktop-acrylic] body{background:transparent}
+html[data-desktop-acrylic] .app{border:0;border-radius:0}
+@media(prefers-reduced-transparency:reduce){
+  html[data-desktop-acrylic] .app,.app{background:#19232d}
+  .card,.chip,.nav,.view-panel{
+    background:#293942;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+}

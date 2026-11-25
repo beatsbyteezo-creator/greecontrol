@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Text.Json;
@@ -7,6 +8,25 @@ namespace GreeControl.Native;
 
 public sealed class Form1 : Form
 {
+    private const int DwmUseImmersiveDarkMode = 20;
+    private const int DwmSystemBackdropType = 38;
+    private const int DesktopAcrylic = 3;
+
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, in int value, int size);
+
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, in FrameMargins margins);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct FrameMargins(int margin)
+    {
+        public readonly int Left = margin;
+        public readonly int Right = margin;
+        public readonly int Top = margin;
+        public readonly int Bottom = margin;
+    }
+
     private readonly WebView2 browser = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(18, 20, 27) };
     private readonly NotifyIcon trayIcon;
     private Process? bridge;
@@ -85,6 +105,24 @@ public sealed class Form1 : Form
         base.OnShown(e);
     }
 
+    private bool TryEnableDesktopAcrylic()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621) || SystemInformation.HighContrast)
+            return false;
+
+        const int darkMode = 1;
+        _ = DwmSetWindowAttribute(Handle, DwmUseImmersiveDarkMode, darkMode, sizeof(int));
+        if (DwmSetWindowAttribute(Handle, DwmSystemBackdropType, DesktopAcrylic, sizeof(int)) < 0)
+            return false;
+        if (DwmExtendFrameIntoClientArea(Handle, new FrameMargins(-1)) < 0)
+            return false;
+
+        // The extended frame is visible through the black Win32 background and transparent WebView.
+        BackColor = Color.Black;
+        browser.DefaultBackgroundColor = Color.Transparent;
+        return true;
+    }
+
     private async void LoadApp(object? sender, EventArgs e)
     {
         try
@@ -120,7 +158,13 @@ public sealed class Form1 : Form
             bridge.BeginErrorReadLine();
             _ = DrainBridgeOutputAsync(bridge.StandardOutput);
 
+            var acrylic = TryEnableDesktopAcrylic();
             await browser.EnsureCoreWebView2Async();
+            if (acrylic)
+            {
+                await browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                    "document.addEventListener('DOMContentLoaded', () => document.documentElement.setAttribute('data-desktop-acrylic', ''), { once: true });");
+            }
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             browser.CoreWebView2.Settings.AreDevToolsEnabled = false;
             browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
