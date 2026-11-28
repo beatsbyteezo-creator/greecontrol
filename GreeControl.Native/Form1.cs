@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -14,7 +15,10 @@ namespace GreeControl.Native;
 
 public sealed class Form1 : Window
 {
-    private const double PanelOpacity = 0.87;
+    private const double FallbackOpacity = 0.94;
+    private const double CornerRadius = 24;
+    private FrostedBackdrop? backdrop;
+    private IntPtr panelHandle;
     private readonly DispatcherTimer panelAnimation = new() { Interval = TimeSpan.FromMilliseconds(15) };
     private readonly Stopwatch transitionClock = new();
     private Rect restingBounds = Rect.Empty;
@@ -74,10 +78,20 @@ public sealed class Form1 : Window
         Content = panel;
         panel.SizeChanged += (_, e) =>
         {
-            var radius = Math.Min(24, Math.Min(e.NewSize.Width, e.NewSize.Height) / 2);
+            var radius = Math.Min(CornerRadius, Math.Min(e.NewSize.Width, e.NewSize.Height) / 2);
             panel.Clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
         };
         panelAnimation.Tick += (_, _) => AdvanceAnimation();
+        SourceInitialized += (_, _) =>
+        {
+            panelHandle = new WindowInteropHelper(this).Handle;
+            backdrop = FrostedBackdrop.TryCreate();
+            if (backdrop is null)
+                return;
+
+            panel.Background = System.Windows.Media.Brushes.Transparent;
+            browser.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+        };
         Loaded += LoadApp;
         Closed += (_, _) =>
         {
@@ -89,6 +103,7 @@ public sealed class Form1 : Window
             trayIcon.Dispose();
             trayMenu.Dispose();
             icon?.Dispose();
+            backdrop?.Dispose();
             browser.Dispose();
             StopBridge();
         };
@@ -195,10 +210,14 @@ public sealed class Form1 : Window
 
     private void ApplyPanelFrame()
     {
-        var opacity = SystemParameters.HighContrast ? 1 : PanelOpacity;
+        var opacity = backdrop is not null || SystemParameters.HighContrast ? 1 : FallbackOpacity;
         panel.Opacity = progress * opacity;
         Left = restingBounds.Left;
         Top = restingBounds.Top + (1 - progress) * 14;
+        if (progress > 0.08 && IsVisible)
+            backdrop?.Follow(panelHandle, (int)Math.Round(CornerRadius * 2 * VisualTreeHelper.GetDpi(this).DpiScaleX));
+        else
+            backdrop?.Hide();
     }
 
     private void PositionAboveClock()
@@ -248,11 +267,13 @@ public sealed class Form1 : Window
             _ = DrainBridgeOutputAsync(bridge.StandardOutput);
 
             var origin = JsonSerializer.Serialize(new Uri(url).GetLeftPart(UriPartial.Authority));
+            var frosted = backdrop is null ? "false" : "true";
             await browser.EnsureCoreWebView2Async();
             await browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($$"""
                 if (window === window.top && location.origin === {{origin}}) document.addEventListener('DOMContentLoaded', () => {
                     const root = document.documentElement;
                     root.setAttribute('data-native-panel', '');
+                    if ({{frosted}}) root.setAttribute('data-frosted-panel', '');
                 }, { once: true });
                 """);
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;

@@ -260,6 +260,8 @@ body{background:transparent}
 }
 html[data-native-panel]{background:#19232d}
 html[data-native-panel] .app{border:0;border-radius:0}
+html[data-frosted-panel]{background:transparent}
+html[data-frosted-panel] .app{background:linear-gradient(155deg,rgba(14,22,31,.34),rgba(9,17,25,.52))}
 #hidePanel{display:none}
 html[data-native-panel] #hidePanel{display:grid}
 @media(prefers-reduced-transparency:reduce){
