@@ -2,6 +2,15 @@
   let token=new URLSearchParams(location.search).get('token');
   if(token){try{localStorage.setItem('gree.sessionToken',token)}catch{}}
   if(!token){try{token=localStorage.getItem('gree.sessionToken')||sessionStorage.getItem('gree.sessionToken')}catch{}}
+  window.greeLocalRequest=async(path,body)=>{
+    if(!token)throw new Error('Pareie este dispositivo para continuar.');
+    const headers={'x-gree-token':token};
+    const request=body===undefined?{headers}:{method:'POST',headers:{...headers,'content-type':'application/json'},body:JSON.stringify(body)};
+    const response=await fetch(path,request);
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.error||'Não foi possível acessar o Gree Control.');
+    return data;
+  };
   const dialog=$('#connectDialog'), ipInput=$('#deviceIP'), message=$('#connectMessage');
   const connection=document.createElement('button');
   connection.id='connection';
@@ -22,7 +31,7 @@
     }catch(error){pairMessage.textContent=error.message;}
   };
   const controls=$$('#pw,#tempSlider,#velBtn,.mode,#fanSlider,.chip');
-  let state=null, busy=false, reconnectTimer=0, retryDelay=5000, connecting=false;
+  let state=null, pending=0, requests=Promise.resolve(), reconnectTimer=0, retryDelay=5000, connecting=false;
   const rememberedIP=()=>{try{return localStorage.getItem('gree.lastIP')||''}catch{return ''}};
   const rememberIP=ip=>{try{if(ip)localStorage.setItem('gree.lastIP',ip)}catch{}};
   st.on=false;
@@ -40,8 +49,39 @@
   }).then(info=>{
     if(!info)return;
     $('#lanAddress').textContent=info.lanUrl;
-    $('#lanPairCode').textContent=info.pin;
+    $('#lanPairCode').textContent=info.pin||'';
+    if(info.admin)setupAccess();
   }).catch(()=>{});
+  function setupAccess(){
+    const panel=$('#lanManagement'),toggle=$('#lanEnabled'),sessionList=$('#lanSessions'),status=$('#lanStatus');
+    panel.hidden=false;
+    async function update(body){
+      toggle.disabled=true;
+      try{
+        const access=await window.greeLocalRequest('/api/access',body);
+        toggle.checked=access.enabled;
+        $('#lanPairCode').hidden=!access.enabled;
+        $('#lanAddress').hidden=!access.enabled;
+        sessionList.replaceChildren();
+        for(const session of access.sessions){
+          const button=document.createElement('button');
+          button.className='settings-action';
+          button.type='button';
+          button.textContent='Revogar pareamento de '+new Date(session.createdAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+          button.onclick=async()=>{button.disabled=true;await update({revoke:session.id});button.disabled=false};
+          sessionList.append(button);
+        }
+        status.textContent=access.enabled?'Acesso pela rede ativado.':'Acesso pela rede desativado.';
+        return true;
+      }catch(error){status.textContent=error.message;return false}
+      finally{toggle.disabled=false}
+    }
+    toggle.onchange=async()=>{
+      const checked=toggle.checked;
+      if(!await update({enabled:checked}))toggle.checked=!checked;
+    };
+    void update();
+  }
   function apply(result){
     state=result.state;
     st.connected=true;
@@ -84,16 +124,26 @@
       void connectAutomatically();
     },retryDelay);
   }
-  async function run(input){
-    if(busy)return null;
-    busy=true;
-    updateControls();
+  function run(input){
+    if(pending&&input.action==='status')return Promise.resolve(null);
+    pending++;
+    const request=requests.then(()=>send(input)).finally(()=>{
+      pending--;
+      if(!pending&&!state&&!connecting)scheduleReconnect();
+    });
+    requests=request.catch(()=>{});
+    return request;
+  }
+  async function send(input){
+    if(input.action==='command'&&!state)return null;
     try{
       const response=await fetch('/api',{method:'POST',headers:{'x-gree-token':token,'content-type':'application/json'},body:JSON.stringify(input)});
       const result=await response.json();
+      if(response.status===409){message.textContent=result.error;return null}
       if(!response.ok)throw new Error(result.error||'Falha na comunicacao com o Gree');
       apply(result);
-      message.textContent='';
+      message.textContent=result.outcome?.ok===false?result.outcome.message:'';
+      if(input.action==='command'&&message.textContent){connection.textContent=message.textContent;connection.title=message.textContent}
       if(input.action==='connect')dialog.close();
       return result;
     }catch(error){
@@ -109,11 +159,11 @@
       st.tempDragging=false;
       render();
       return null;
-    }finally{busy=false;updateControls();}
+    }finally{updateControls();}
   }
   async function connectAutomatically(){
     if(!token){connection.textContent='Abra pelo arquivo .bat para conectar';return}
-    if(state||busy||connecting)return;
+    if(state||pending||connecting)return;
     connecting=true;
     try{
       const saved=rememberedIP();
@@ -137,21 +187,15 @@
   function command(name,value){if(state)return run({action:'command',name,value});return Promise.resolve(null)}
   async function applyPlan(plan){
     if(!state)return {ok:false,message:'O Gree está desconectado; não enviei comandos.'};
-    if(plan.action==='adjust'&&!st.on)return {ok:false,message:'O Gree está desligado; a rotina foi ignorada sem enviar comandos.'};
-    if(plan.on===false){if(st.on&&!await run({action:'command',name:'Pow',value:0}))return {ok:false,message:'Não consegui confirmar o desligamento.'};return {ok:true,message:'O Gree confirmou que está desligado.'}}
-    if(plan.on===true&&!st.on&&!await run({action:'command',name:'Pow',value:1}))return {ok:false,message:'Não consegui confirmar que o Gree ligou.'};
-    const modeIndex=plan.mode==='Calor'?1:plan.mode==='Auto'?4:0;
-    if(state.Mod!==modesWire[modeIndex]&&!await run({action:'command',name:'Mod',value:modesWire[modeIndex]}))return {ok:false,message:'Não consegui confirmar o modo.'};
-    const temperature=Math.max(16,Math.min(30,Number(plan.temp)||23));
-    if(st.t!==temperature&&!await run({action:'command',name:'SetTem',value:temperature}))return {ok:false,message:'Não consegui confirmar a temperatura.'};
-    return {ok:true,message:`O Gree confirmou ${plan.mode||'Frio'} a ${temperature}°C.`};
+    const result=await run({...plan,action:'plan',condition:plan.action,mode:plan.mode||'Frio',temp:Number(plan.temp)||23});
+    return result?.outcome||{ok:false,message:'Não consegui confirmar os ajustes com o Gree.'};
   }
   window.greeActions={
     getState:()=>({...st}),
     applyPlan,
     applyRecommendation:recommendation=>applyPlan({on:true,mode:recommendation.mode,temp:recommendation.temp}),
     togglePower:()=>command('Pow',st.on?0:1),
-    refreshStatus:()=>state?(busy?Promise.resolve(null):run({action:'status'})):connectAutomatically()
+    refreshStatus:()=>state?(pending?Promise.resolve(null):run({action:'status'})):connectAutomatically()
   };
   function open(){
     if(!dialog.open)dialog.showModal();

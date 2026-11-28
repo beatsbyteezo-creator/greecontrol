@@ -113,7 +113,7 @@
     <div class="view-heading"><span>Conexão e aplicativo</span></div>
     <article class="settings-item"><div><small>Ar-condicionado Gree</small><strong id="settingsConnection">Buscando na rede local</strong><p>Conexão local por Wi-Fi. A busca automática é mantida ativa.</p></div><button class="settings-action" id="openConnectionSettings" type="button">Configurar conexão</button></article>
     <article class="settings-item"><div><small>Aplicativo</small><strong>Gree Control para Windows</strong><p>O controle continua na bandeja do sistema quando a janela é ocultada.</p></div></article>
-    <article class="settings-item lan-pairing"><div><small>Gree Control no iPhone</small><strong class="lan-access" id="lanAddress">Preparando endereço local.</strong><p>Conecte o iPhone à mesma rede Wi-Fi, abra o endereço no Safari e informe o código temporário abaixo. Depois, toque em Compartilhar e escolha Adicionar à Tela de Início. O Gree Control precisa continuar aberto no Windows.</p><strong id="lanPairCode">Aguardando código</strong><p>O pareamento fica salvo neste iPhone. Se o endereço mudar, consulte o novo endereço aqui. Evite redes Wi-Fi de convidados.</p></div></article>
+    <article class="settings-item lan-pairing"><div><small>Gree Control no iPhone</small><strong class="lan-access" id="lanAddress">Preparando endereço local.</strong><p>Conecte o iPhone à mesma rede Wi-Fi, abra o endereço no Safari e informe o código temporário abaixo. Depois, toque em Compartilhar e escolha Adicionar à Tela de Início. O Gree Control precisa continuar aberto no Windows.</p><strong id="lanPairCode">Aguardando código</strong><p>O pareamento fica salvo neste iPhone. Se o endereço mudar, consulte o novo endereço aqui. Evite redes Wi-Fi de convidados.</p><div id="lanManagement" hidden><label><input id="lanEnabled" type="checkbox"> Permitir acesso pela rede local</label><p id="lanStatus" role="status"></p><div id="lanSessions"></div></div></div></article>
     <section class="settings-group" aria-label="Perfis de conforto">
       <div class="settings-group-heading"><strong>Perfis de conforto</strong><small>Salve seus ajustes favoritos e aplique quando quiser.</small></div>
       <div class="comfort-profiles">
@@ -129,9 +129,10 @@
         <label id="routineTimeLabel" for="routineTime">Horario</label><input id="routineTime" type="time" value="22:00">
         <label id="routineThresholdLabel" for="routineThreshold" hidden>Temperatura externa</label><div id="routineThresholdWrap" hidden><span id="routineThresholdPrefix">≥</span><input id="routineThreshold" type="number" min="-5" max="45" value="29"><span>°C</span></div>
         <label for="routineAction">Acao</label><select id="routineAction"><option value="on">Ligar e ajustar</option><option value="adjust">Ajustar se ja estiver ligado</option><option value="off">Desligar</option></select>
-        <label for="routineMode">Modo e temperatura</label><div class="routine-target"><select id="routineMode"><option>Frio</option><option>Calor</option><option>Auto</option></select><input id="routineTemp" type="number" min="16" max="30" value="24" aria-label="Temperatura da rotina"><span>°C</span></div>
+        <label for="routineMode">Modo e temperatura</label><div class="routine-target"><select id="routineMode"><option>Frio</option><option>Calor</option><option>Auto</option></select><input id="routineTemp" type="number" required min="16" max="30" value="24" aria-label="Temperatura da rotina"><span>°C</span></div>
         <button class="settings-action" type="submit">Adicionar rotina</button>
       </form>
+      <p class="routine-empty" id="routineStatus" role="status"></p>
       <div class="routine-list" id="routineList"><div class="routine-empty">Nenhuma rotina ativa.</div></div>
     </section>  </section>
   <section class="view-panel assistant-panel" id="assistantView" aria-label="Gree Assistente">

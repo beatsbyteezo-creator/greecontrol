@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
-using System.Drawing.Imaging;
-using System.Text;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Text.Json;
@@ -11,11 +9,27 @@ namespace GreeControl.Native;
 
 public sealed class Form1 : Form
 {
-    private const uint GetDesktopWallpaper = 0x0073;
+    private const int DwmUseImmersiveDarkMode = 20;
+    private const int DwmWindowCornerPreference = 33;
+    private const int DwmSystemBackdropType = 38;
+    private const int DesktopAcrylic = 3;
 
-    [DllImport("user32.dll", EntryPoint = "SystemParametersInfoW", CharSet = CharSet.Unicode, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SystemParametersInfo(uint action, uint length, StringBuilder value, uint flags);
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, in int value, int size);
+
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, in FrameMargins margins);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct FrameMargins(int margin)
+    {
+        public readonly int Left = margin;
+        public readonly int Right = margin;
+        public readonly int Top = margin;
+        public readonly int Bottom = margin;
+    }
+
+    private bool desktopAcrylic;
 
     private readonly WebView2 browser = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(18, 20, 27) };
     private readonly NotifyIcon trayIcon;
@@ -106,7 +120,7 @@ public sealed class Form1 : Form
     protected override void OnSizeChanged(EventArgs e)
     {
         base.OnSizeChanged(e);
-        if (ClientSize.Width == 0 || ClientSize.Height == 0)
+        if (desktopAcrylic || ClientSize.Width == 0 || ClientSize.Height == 0)
             return;
 
         var diameter = Math.Min(ScaleLogicalPixels(56), Math.Min(ClientSize.Width, ClientSize.Height));
@@ -133,45 +147,30 @@ public sealed class Form1 : Form
             PositionAboveClock();
     }
 
-    private string? CreateWallpaperBackdrop()
+    private bool TryEnableDesktopAcrylic()
     {
-        if (SystemInformation.HighContrast)
-            return null;
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621) || SystemInformation.HighContrast)
+            return false;
 
-        var wallpaper = new StringBuilder(32768);
-        _ = SystemParametersInfo(GetDesktopWallpaper, (uint)wallpaper.Capacity, wallpaper, 0);
-        var cachedWallpaper = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Microsoft", "Windows", "Themes", "TranscodedWallpaper");
-        var path = File.Exists(wallpaper.ToString()) ? wallpaper.ToString() : cachedWallpaper;
-        if (!File.Exists(path))
-            return null;
-
-        try
+        // A custom Win32 region prevents DWM from rounding the window.
+        var oldRegion = Region;
+        Region = null;
+        const int darkMode = 1;
+        const int rounded = 2;
+        _ = DwmSetWindowAttribute(Handle, DwmUseImmersiveDarkMode, darkMode, sizeof(int));
+        _ = DwmSetWindowAttribute(Handle, DwmWindowCornerPreference, rounded, sizeof(int));
+        if (DwmSetWindowAttribute(Handle, DwmSystemBackdropType, DesktopAcrylic, sizeof(int)) < 0 ||
+            DwmExtendFrameIntoClientArea(Handle, new FrameMargins(-1)) < 0)
         {
-            using var image = Image.FromFile(path);
-            var screen = (Screen.PrimaryScreen ?? Screen.FromControl(this)).Bounds;
-            var scale = Math.Max((double)screen.Width / image.Width, (double)screen.Height / image.Height);
-            var imageLeft = screen.Left + (screen.Width - image.Width * scale) / 2;
-            var imageTop = screen.Top + (screen.Height - image.Height * scale) / 2;
-            var source = new RectangleF((float)((Left - imageLeft) / scale), (float)((Top - imageTop) / scale),
-                (float)(Width / scale), (float)(Height / scale));
-
-            // Keep only the part of the wallpaper behind the panel in the WebView.
-            using var crop = new Bitmap(Width, Height);
-            using (var graphics = Graphics.FromImage(crop))
-            {
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.DrawImage(image, new Rectangle(0, 0, crop.Width, crop.Height), source, GraphicsUnit.Pixel);
-            }
-
-            using var buffer = new MemoryStream();
-            crop.Save(buffer, ImageFormat.Jpeg);
-            return $"data:image/jpeg;base64,{Convert.ToBase64String(buffer.ToArray())}";
+            Region = oldRegion;
+            return false;
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or ExternalException or OutOfMemoryException)
-        {
-            return null;
-        }
+
+        oldRegion?.Dispose();
+        // The extended frame is visible through the black Win32 background and transparent WebView.
+        BackColor = Color.Black;
+        browser.DefaultBackgroundColor = Color.Transparent;
+        return true;
     }
 
     private async void LoadApp(object? sender, EventArgs e)
@@ -210,17 +209,14 @@ public sealed class Form1 : Form
             _ = DrainBridgeOutputAsync(bridge.StandardOutput);
 
             var origin = JsonSerializer.Serialize(new Uri(url).GetLeftPart(UriPartial.Authority));
-            var backdrop = JsonSerializer.Serialize(CreateWallpaperBackdrop());
+            desktopAcrylic = TryEnableDesktopAcrylic();
+            var acrylic = desktopAcrylic ? "true" : "false";
             await browser.EnsureCoreWebView2Async();
             await browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($$"""
                 if (window === window.top && location.origin === {{origin}}) document.addEventListener('DOMContentLoaded', () => {
                     const root = document.documentElement;
                     root.setAttribute('data-native-panel', '');
-                    const wallpaper = {{backdrop}};
-                    if (wallpaper) {
-                        root.style.setProperty('--desktop-wallpaper', 'url("' + wallpaper + '")');
-                        root.setAttribute('data-wallpaper-glass', '');
-                    }
+                    if ({{acrylic}}) root.setAttribute('data-desktop-acrylic', '');
                 }, { once: true });
                 """);
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;

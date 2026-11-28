@@ -2,19 +2,21 @@
 
 Aplicativo para Windows que controla aparelhos Gree pela rede local. A interface roda em uma janela nativa com WebView2; o Edge não abre como navegador.
 
+O painel usa o acrílico do Windows 11 a partir da compilação 22621, que reage às janelas atrás dele. Quando o material está indisponível, o painel tem fundo sólido.
+
 ## Instalação no Windows
 
 Baixe `GreeControl-Setup-x64.exe` na página **Releases** do GitHub e execute. O instalador é por usuário, aplica o ícone do app, instala o WebView2 se necessário, inclui o runtime .NET, cria atalhos no Menu Iniciar e não configura inicialização automática com o Windows.
 
 Ao abrir e a cada 15 minutos enquanto estiver em execução, o aplicativo consulta os metadados publicados com o instalador. Se encontrar uma versão mais nova, valida o SHA-256 e oferece a opção de instalar e reiniciar.
 
-O painel abre acima do relógio do Windows. Use o ícone da bandeja para abrir o painel e o botão de fechar para ocultá-lo. Na bandeja, o aplicativo mantém o acesso pelo iPhone e as rotinas. Para encerrar, use **Sair** no menu do ícone da bandeja. As sugestões do Assistente aparecem na aba **Assistente**.
+O painel abre acima do relógio do Windows. Use o ícone da bandeja para abrir o painel e o botão de fechar para ocultá-lo. Na bandeja, o aplicativo mantém o acesso pelo iPhone e executa as rotinas. As rotinas são compartilhadas entre Windows e iPhone. Uma rotina diária tem até dez minutos para rodar após o horário marcado. Rotinas por temperatura dependem de dados recentes e do acompanhamento ativo no Assistente. Para encerrar, use **Sair** no menu do ícone da bandeja. As sugestões do Assistente aparecem na aba **Assistente**.
 
 ## Usar como app no iPhone
 
 O Gree Control também serve a interface pela rede local. Deixe o app aberto no Windows e, na tela **Configurações**, use o endereço exibido em “Gree Control no iPhone”. O iPhone e o PC precisam estar na mesma rede Wi-Fi; redes de convidados podem bloquear a comunicação entre aparelhos.
 
-No Safari, abra esse endereço, informe o código de pareamento mostrado no Windows e escolha **Compartilhar → Adicionar à Tela de Início**. Ative **Abrir como App da Web** se a opção aparecer. O pareamento fica salvo no iPhone. O app do Windows precisa permanecer aberto na bandeja para que o controle funcione. Se o roteador mudar o IP do PC, consulte o novo endereço nas configurações do Windows.
+No Safari, abra esse endereço, informe o código de pareamento mostrado no Windows e escolha **Compartilhar → Adicionar à Tela de Início**. Ative **Abrir como App da Web** se a opção aparecer. O pareamento fica salvo no iPhone. Em Configurações do Windows, você pode revogar cada pareamento ou desativar o acesso pela rede local. Ao atualizar de uma versão anterior à 1.2.14, pareie o iPhone novamente. O app do Windows precisa permanecer aberto na bandeja para que o controle funcione. Se o roteador mudar o IP do PC, consulte o novo endereço nas configurações do Windows.
 
 A interface usa a porta local `47821` por padrão. Você pode substituí-la com a variável de ambiente `GREE_PORT` antes de iniciar o servidor. O endereço local usa HTTP e deve ficar restrito à sua rede doméstica.
 

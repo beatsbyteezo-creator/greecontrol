@@ -29,10 +29,6 @@ function broadcastTargets(){
   out.add(fromInt(broadcast));
   const hosts=broadcast-network-1;
   if(hosts>0&&hosts<=4094){for(let address=network+1;address<broadcast;address++)if(address!==ip)out.add(fromInt(address))}
-  else if(hosts>4094){
-   // For subnets larger than /20, scan the whole subnet in paced batches below.
-   for(let address=network+1;address<broadcast;address++)if(address!==ip)out.add(fromInt(address));
-  }
  }
  return [...out];
 }
@@ -48,7 +44,14 @@ function exchange(socket,ip,body,accept,{broadcast=false,timeoutMs=2500,destinat
   const timeout=setTimeout(()=>finish(new Error('Sem resposta do Gree')),timeoutMs);
   socket.on('message',onMessage);
   const targets=destinations||(broadcast?broadcastTargets():[ip]),payload=JSON.stringify(body);
-  for(const destination of targets)for(const port of ports)socket.send(payload,port,destination,()=>{});
+  function sendBatch(offset){
+   if(done)return;
+   for(const destination of targets.slice(offset,offset+64)){
+    for(const port of ports)socket.send(payload,port,destination,()=>{});
+   }
+   if(offset+64<targets.length)setTimeout(()=>sendBatch(offset+64),20);
+  }
+  sendBatch(0);
  });
 }
 async function connect(address){

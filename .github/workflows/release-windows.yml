@@ -37,6 +37,9 @@ jobs:
           node-version: 20.x
           architecture: x64
 
+      - name: Test the local bridge
+        run: node --test test/bridge.test.cjs
+
       - name: Publish self-contained Windows app
         shell: pwsh
         run: |
