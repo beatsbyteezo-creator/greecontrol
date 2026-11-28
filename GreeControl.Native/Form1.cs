@@ -17,6 +17,7 @@ public sealed class Form1 : Window
 {
     private const double FallbackOpacity = 0.94;
     private const double CornerRadius = 24;
+    private const double SlideDistance = 10;
     private FrostedBackdrop? backdrop;
     private IntPtr panelHandle;
     private readonly DispatcherTimer panelAnimation = new() { Interval = TimeSpan.FromMilliseconds(15) };
@@ -144,6 +145,14 @@ public sealed class Form1 : Window
         Activate();
         browser.Focus();
         if (panelReady)
+            QueueEntrance();
+    }
+
+    private async void QueueEntrance()
+    {
+        // Let the retained WebView visual update before revealing the acrylic beneath it.
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+        if (panelRequested && IsVisible && !exitRequested)
             AnimatePanel(1);
     }
 
@@ -185,9 +194,9 @@ public sealed class Form1 : Window
 
     private void AdvanceAnimation()
     {
-        var duration = transitionTarget == 1 ? 210 : 155;
+        var duration = transitionTarget == 1 ? 110 : 90;
         var fraction = Math.Min(1, transitionClock.Elapsed.TotalMilliseconds / duration);
-        var eased = transitionTarget == 1 ? 1 - Math.Pow(1 - fraction, 3) : fraction * fraction;
+        var eased = 1 - (1 - fraction) * (1 - fraction);
         progress = transitionStart + (transitionTarget - transitionStart) * eased;
         ApplyPanelFrame();
         if (fraction >= 1)
@@ -210,14 +219,21 @@ public sealed class Form1 : Window
 
     private void ApplyPanelFrame()
     {
-        var opacity = backdrop is not null || SystemParameters.HighContrast ? 1 : FallbackOpacity;
-        panel.Opacity = progress * opacity;
+        var top = restingBounds.Top + (1 - progress) * SlideDistance;
+        if (backdrop is not null && progress > 0 && IsVisible)
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            backdrop.Present(panelHandle, (int)Math.Round(restingBounds.Left * dpi.DpiScaleX),
+                (int)Math.Round(top * dpi.DpiScaleY), (int)Math.Round(CornerRadius * 2 * dpi.DpiScaleX),
+                Math.Max(2, (int)Math.Round(2 * dpi.DpiScaleX)));
+            panel.Opacity = 1;
+            return;
+        }
+
+        backdrop?.Hide();
+        panel.Opacity = progress * (SystemParameters.HighContrast ? 1 : FallbackOpacity);
         Left = restingBounds.Left;
-        Top = restingBounds.Top + (1 - progress) * 14;
-        if (progress > 0.08 && IsVisible)
-            backdrop?.Follow(panelHandle, (int)Math.Round(CornerRadius * 2 * VisualTreeHelper.GetDpi(this).DpiScaleX));
-        else
-            backdrop?.Hide();
+        Top = top;
     }
 
     private void PositionAboveClock()
@@ -330,7 +346,7 @@ public sealed class Form1 : Window
                 {
                     panelReady = true;
                     if (panelRequested)
-                        AnimatePanel(1);
+                        QueueEntrance();
                 }
                 webPageReady = navigation.IsSuccess;
                 if (webPageReady && pendingUpdateNotice is not null)
