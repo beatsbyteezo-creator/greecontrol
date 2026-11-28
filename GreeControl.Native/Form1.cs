@@ -26,6 +26,7 @@ public sealed class Form1 : Window
     private bool panelRequested = true;
     private bool panelReady;
     private bool exitRequested;
+    private int entranceRequest;
     private double progress;
     private double transitionStart;
     private double transitionTarget;
@@ -86,11 +87,14 @@ public sealed class Form1 : Window
         SourceInitialized += (_, _) =>
         {
             panelHandle = new WindowInteropHelper(this).Handle;
+            FrostedBackdrop.DisableSystemTransitions(panelHandle);
             backdrop = FrostedBackdrop.TryCreate();
             if (backdrop is null)
                 return;
 
+            ParkFrostedPanel();
             panel.Background = System.Windows.Media.Brushes.Transparent;
+            panel.Opacity = 1;
             browser.DefaultBackgroundColor = System.Drawing.Color.Transparent;
         };
         Loaded += LoadApp;
@@ -131,6 +135,7 @@ public sealed class Form1 : Window
     private void HideToTray()
     {
         panelRequested = false;
+        entranceRequest++;
         AnimatePanel(0);
     }
 
@@ -145,14 +150,24 @@ public sealed class Form1 : Window
         Activate();
         browser.Focus();
         if (panelReady)
-            QueueEntrance();
+            _ = PrepareEntranceAsync();
     }
 
-    private async void QueueEntrance()
+    private async Task PrepareEntranceAsync()
     {
-        // Let the retained WebView visual update before revealing the acrylic beneath it.
+        var request = ++entranceRequest;
+        if (backdrop is not null && progress == 0)
+        {
+            // Show both surfaces off-screen first: WebView2 can resume and DWM can
+            // initialize the acrylic without exposing either surface by itself.
+            ParkFrostedPanel();
+            panel.Opacity = 1;
+            PresentFrostedPanel(SystemParameters.VirtualScreenLeft - Width - 100, restingBounds.Top);
+            await Task.Delay(35);
+        }
+
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
-        if (panelRequested && IsVisible && !exitRequested)
+        if (request == entranceRequest && panelRequested && IsVisible && !exitRequested)
             AnimatePanel(1);
     }
 
@@ -185,6 +200,8 @@ public sealed class Form1 : Window
         transitionClock.Restart();
         if (progress != target)
         {
+            if (target == 1 && progress == 0 && backdrop is not null)
+                PresentFrostedPanel(restingBounds.Left, restingBounds.Top + SlideDistance);
             panelAnimation.Start();
             return;
         }
@@ -220,20 +237,36 @@ public sealed class Form1 : Window
     private void ApplyPanelFrame()
     {
         var top = restingBounds.Top + (1 - progress) * SlideDistance;
-        if (backdrop is not null && progress > 0 && IsVisible)
+        if (backdrop is not null)
         {
-            var dpi = VisualTreeHelper.GetDpi(this);
-            backdrop.Present(panelHandle, (int)Math.Round(restingBounds.Left * dpi.DpiScaleX),
-                (int)Math.Round(top * dpi.DpiScaleY), (int)Math.Round(CornerRadius * 2 * dpi.DpiScaleX),
-                Math.Max(2, (int)Math.Round(2 * dpi.DpiScaleX)));
-            panel.Opacity = 1;
+            if (progress > 0 && IsVisible)
+            {
+                PresentFrostedPanel(restingBounds.Left, top);
+                return;
+            }
+
+            backdrop.Hide();
+            ParkFrostedPanel();
             return;
         }
 
-        backdrop?.Hide();
         panel.Opacity = progress * (SystemParameters.HighContrast ? 1 : FallbackOpacity);
         Left = restingBounds.Left;
         Top = top;
+    }
+
+    private void ParkFrostedPanel()
+    {
+        Left = SystemParameters.VirtualScreenLeft - Width - 100;
+        Top = restingBounds.Top;
+    }
+
+    private void PresentFrostedPanel(double left, double top)
+    {
+        var dpi = VisualTreeHelper.GetDpi(this);
+        backdrop?.Present(panelHandle, (int)Math.Round(left * dpi.DpiScaleX),
+            (int)Math.Round(top * dpi.DpiScaleY), (int)Math.Round(CornerRadius * 2 * dpi.DpiScaleX),
+            Math.Max(2, (int)Math.Round(2 * dpi.DpiScaleX)));
     }
 
     private void PositionAboveClock()
@@ -346,7 +379,7 @@ public sealed class Form1 : Window
                 {
                     panelReady = true;
                     if (panelRequested)
-                        QueueEntrance();
+                        _ = PrepareEntranceAsync();
                 }
                 webPageReady = navigation.IsSuccess;
                 if (webPageReady && pendingUpdateNotice is not null)

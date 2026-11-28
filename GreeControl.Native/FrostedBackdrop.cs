@@ -18,6 +18,7 @@ internal sealed class FrostedBackdrop : IDisposable
     private const int AccentPolicyAttribute = 19;
     private const int AcrylicBlur = 4;
     private const int HideWindow = 0;
+    private const int TransitionsForcedDisabled = 3;
 
     private readonly HwndSource surface;
     private int width;
@@ -37,6 +38,13 @@ internal sealed class FrostedBackdrop : IDisposable
         surface.CompositionTarget!.BackgroundColor = Colors.Transparent;
         surface.RootVisual = new System.Windows.Controls.Border { Background = System.Windows.Media.Brushes.Transparent };
         surface.AddHook(PassThroughHitTest);
+        DisableSystemTransitions(surface.Handle);
+    }
+
+    public static void DisableSystemTransitions(IntPtr handle)
+    {
+        var disabled = 1;
+        _ = DwmSetWindowAttribute(handle, TransitionsForcedDisabled, ref disabled, sizeof(int));
     }
 
     public static FrostedBackdrop? TryCreate()
@@ -150,6 +158,9 @@ internal sealed class FrostedBackdrop : IDisposable
         public int Right;
         public int Bottom;
     }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
