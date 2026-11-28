@@ -2,7 +2,7 @@
 
 Aplicativo para Windows que controla aparelhos Gree pela rede local. A interface roda em uma janela nativa com WebView2; o Edge não abre como navegador.
 
-O painel usa o acrílico do Windows 11 a partir da compilação 22621, que reage às janelas atrás dele. Quando o material está indisponível, o painel tem fundo sólido.
+O painel é translúcido e mostra o conteúdo que está atrás dele. Ele abre com uma animação curta e volta para a bandeja quando outra janela ganha foco.
 
 ## Instalação no Windows
 

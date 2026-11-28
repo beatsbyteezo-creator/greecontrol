@@ -13,11 +13,15 @@ test('bridge serializes clients, verifies adjustments and shares routines',async
   await copyFile(join(__dirname,'..','servidor.cjs'),join(root,'servidor.cjs'));
   await writeFile(join(root,'gree.cjs'),`
     const state={Pow:1,Mod:1,SetTem:22};
+    let active=false;
     module.exports={
       connect:async()=>({ip:'192.0.2.1'}),
       status:async()=>({...state}),
       async command(_,name,value){
+        if(active)throw new Error("Overlapping commands");
+        active=true;
         await new Promise(resolve=>setTimeout(resolve,30));
+        active=false;
         if(value!==25)state[name]=value;
         return {...state};
       }
@@ -58,9 +62,10 @@ test('bridge serializes clients, verifies adjustments and shares routines',async
   ]);
   assert.equal(first.data.state.SetTem,23);
   assert.equal(second.data.state.SetTem,24);
+  const current=await request('/api',admin,{action:'status'});
   const rejected=await request('/api',admin,{action:'plan',on:true,mode:'Frio',temp:25});
   assert.equal(rejected.data.outcome.ok,false);
-  assert.equal(rejected.data.state.SetTem,24);
+  assert.equal(rejected.data.state.SetTem,current.data.state.SetTem);
   const adjusted=await request('/api',admin,{action:'plan',on:true,mode:'Auto',temp:26});
   assert.equal(adjusted.data.outcome.ok,true);
   assert.equal(adjusted.data.state.Mod,0);

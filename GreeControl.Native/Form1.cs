@@ -1,42 +1,39 @@
+using System.IO;
 using System.Diagnostics;
-using System.Drawing.Drawing2D;
-using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Wpf;
 using System.Text.Json;
 
 namespace GreeControl.Native;
 
-public sealed class Form1 : Form
+public sealed class Form1 : Window
 {
-    private const int DwmUseImmersiveDarkMode = 20;
-    private const int DwmWindowCornerPreference = 33;
-    private const int DwmSystemBackdropType = 38;
-    private const int DesktopAcrylic = 3;
+    private const double PanelOpacity = 0.87;
+    private readonly DispatcherTimer panelAnimation = new() { Interval = TimeSpan.FromMilliseconds(15) };
+    private readonly Stopwatch transitionClock = new();
+    private Rect restingBounds = Rect.Empty;
+    private bool panelRequested = true;
+    private bool panelReady;
+    private bool exitRequested;
+    private double progress;
+    private double transitionStart;
+    private double transitionTarget;
+    private Action? afterHide;
 
-    [DllImport("dwmapi.dll", ExactSpelling = true)]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, in int value, int size);
-
-    [DllImport("dwmapi.dll", ExactSpelling = true)]
-    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, in FrameMargins margins);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private readonly struct FrameMargins(int margin)
-    {
-        public readonly int Left = margin;
-        public readonly int Right = margin;
-        public readonly int Top = margin;
-        public readonly int Bottom = margin;
-    }
-
-    private bool desktopAcrylic;
-
-    private readonly WebView2 browser = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(18, 20, 27) };
-    private readonly NotifyIcon trayIcon;
+    private readonly WebView2CompositionControl browser = new() { DefaultBackgroundColor = System.Drawing.Color.FromArgb(25, 35, 45) };
+    private readonly Grid panel = new() { Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(25, 35, 45)), Opacity = 0 };
+    private readonly Forms.NotifyIcon trayIcon;
     private Process? bridge;
     private bool reallyExit;
-    private readonly System.Windows.Forms.Timer assistantMonitor = new() { Interval = 30_000 };
-    private readonly System.Windows.Forms.Timer updateMonitor = new() { Interval = 15 * 60_000 };
+    private bool closed;
+    private readonly DispatcherTimer assistantMonitor = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer updateMonitor = new() { Interval = TimeSpan.FromMinutes(15) };
     private bool checkingUpdate;
     private bool webPageReady;
     private string? pendingUpdateNotice;
@@ -45,136 +42,178 @@ public sealed class Form1 : Form
 
     public Form1()
     {
-        Text = "Gree Control";
-        AutoScaleMode = AutoScaleMode.Dpi;
-        FormBorderStyle = FormBorderStyle.None;
+        Title = "Gree Control";
+        WindowStyle = WindowStyle.None;
+        ResizeMode = ResizeMode.NoResize;
+        AllowsTransparency = true;
+        Background = System.Windows.Media.Brushes.Transparent;
         ShowInTaskbar = false;
-        TopMost = true;
-        StartPosition = FormStartPosition.Manual;
-        BackColor = Color.FromArgb(18, 20, 27);
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        PositionAboveClock();
+
         var iconPath = Path.Combine(AppContext.BaseDirectory, "gree-control.ico");
-        Icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
-        var trayMenu = new ContextMenuStrip();
+        var icon = File.Exists(iconPath) ? new System.Drawing.Icon(iconPath) : null;
+        var trayMenu = new Forms.ContextMenuStrip();
         trayMenu.Items.Add("Abrir Gree Control", null, (_, _) => RestoreFromTray());
         trayMenu.Items.Add("Sair", null, (_, _) => ExitFromTray());
-        trayIcon = new NotifyIcon { Text = "Gree Control", Icon = Icon, ContextMenuStrip = trayMenu, Visible = true };
-        trayIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) RestoreFromTray(); };
+        trayIcon = new Forms.NotifyIcon
+        {
+            Text = "Gree Control",
+            Icon = icon ?? System.Drawing.SystemIcons.Application,
+            ContextMenuStrip = trayMenu,
+            Visible = true
+        };
+        trayIcon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) RestoreFromTray(); };
         assistantMonitor.Tick += (_, _) =>
         {
             if (webPageReady && browser.CoreWebView2 is not null)
                 _ = browser.CoreWebView2.ExecuteScriptAsync("(async()=>{await window.greeActions?.refreshStatus?.();window.greeAssistantBackgroundCheck?.();window.greeAutomationTick?.()})()");
         };
         updateMonitor.Tick += async (_, _) => await CheckForUpdatesAsync();
-        Controls.Add(browser);
-        Load += (_, _) => PositionAboveClock();
-        Load += LoadApp;
-        FormClosed += (_, _) =>
+        panel.Children.Add(browser);
+        Content = panel;
+        panel.SizeChanged += (_, e) =>
         {
-            assistantMonitor.Dispose();
-            updateMonitor.Dispose();
+            var radius = Math.Min(24, Math.Min(e.NewSize.Width, e.NewSize.Height) / 2);
+            panel.Clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
+        };
+        panelAnimation.Tick += (_, _) => AdvanceAnimation();
+        Loaded += LoadApp;
+        Closed += (_, _) =>
+        {
+            closed = true;
+            panelAnimation.Stop();
+            assistantMonitor.Stop();
+            updateMonitor.Stop();
             trayIcon.Visible = false;
             trayIcon.Dispose();
             trayMenu.Dispose();
+            icon?.Dispose();
+            browser.Dispose();
             StopBridge();
         };
     }
 
-    protected override void OnFormClosing(FormClosingEventArgs e)
+    protected override void OnClosing(CancelEventArgs e)
     {
-        if (!reallyExit && e.CloseReason == CloseReason.UserClosing)
+        if (!reallyExit)
         {
             e.Cancel = true;
             HideToTray();
             return;
         }
-        base.OnFormClosing(e);
+        base.OnClosing(e);
     }
 
-    private void HideToTray() => Hide();
+    protected override void OnDeactivated(EventArgs e)
+    {
+        base.OnDeactivated(e);
+        if (!exitRequested && panelRequested)
+            HideToTray();
+    }
+
+    private void HideToTray()
+    {
+        panelRequested = false;
+        AnimatePanel(0);
+    }
 
     private void RestoreFromTray()
     {
+        if (exitRequested)
+            return;
+
+        panelRequested = true;
         PositionAboveClock();
         Show();
         Activate();
         browser.Focus();
+        if (panelReady)
+            AnimatePanel(1);
     }
 
     private void ExitFromTray()
     {
-        reallyExit = true;
-        Close();
+        CloseAfterAnimation(() =>
+        {
+            reallyExit = true;
+            Close();
+        });
+    }
+
+    private void CloseAfterAnimation(Action onHidden)
+    {
+        if (exitRequested)
+            return;
+
+        exitRequested = true;
+        afterHide = onHidden;
+        HideToTray();
+    }
+
+    private void AnimatePanel(double target)
+    {
+        if (panelAnimation.IsEnabled && transitionTarget == target)
+            return;
+
+        transitionStart = progress;
+        transitionTarget = target;
+        transitionClock.Restart();
+        if (progress != target)
+        {
+            panelAnimation.Start();
+            return;
+        }
+
+        FinishAnimation();
+    }
+
+    private void AdvanceAnimation()
+    {
+        var duration = transitionTarget == 1 ? 210 : 155;
+        var fraction = Math.Min(1, transitionClock.Elapsed.TotalMilliseconds / duration);
+        var eased = transitionTarget == 1 ? 1 - Math.Pow(1 - fraction, 3) : fraction * fraction;
+        progress = transitionStart + (transitionTarget - transitionStart) * eased;
+        ApplyPanelFrame();
+        if (fraction >= 1)
+            FinishAnimation();
+    }
+
+    private void FinishAnimation()
+    {
+        panelAnimation.Stop();
+        progress = transitionTarget;
+        ApplyPanelFrame();
+        if (progress != 0)
+            return;
+
+        Hide();
+        var callback = afterHide;
+        afterHide = null;
+        callback?.Invoke();
+    }
+
+    private void ApplyPanelFrame()
+    {
+        var opacity = SystemParameters.HighContrast ? 1 : PanelOpacity;
+        panel.Opacity = progress * opacity;
+        Left = restingBounds.Left;
+        Top = restingBounds.Top + (1 - progress) * 14;
     }
 
     private void PositionAboveClock()
     {
-        var area = (Screen.PrimaryScreen ?? Screen.FromControl(this)).WorkingArea;
-        var inset = ScaleLogicalPixels(8);
-        var width = Math.Min(ScaleLogicalPixels(446), Math.Max(1, area.Width - inset * 2));
-        var height = Math.Min(ScaleLogicalPixels(760), Math.Max(1, area.Height - inset * 2));
-        SetBounds(area.Right - width - inset, area.Bottom - height - inset, width, height);
+        var area = SystemParameters.WorkArea;
+        const double inset = 8;
+        Width = Math.Min(446, Math.Max(1, area.Width - inset * 2));
+        Height = Math.Min(760, Math.Max(1, area.Height - inset * 2));
+        restingBounds = new Rect(area.Right - Width - inset, area.Bottom - Height - inset, Width, Height);
+        ApplyPanelFrame();
     }
 
-    private int ScaleLogicalPixels(int pixels) => (int)Math.Round(pixels * DeviceDpi / 96.0);
-
-    protected override void OnSizeChanged(EventArgs e)
+    private async void LoadApp(object sender, RoutedEventArgs e)
     {
-        base.OnSizeChanged(e);
-        if (desktopAcrylic || ClientSize.Width == 0 || ClientSize.Height == 0)
-            return;
-
-        var diameter = Math.Min(ScaleLogicalPixels(56), Math.Min(ClientSize.Width, ClientSize.Height));
-        var right = ClientSize.Width - diameter;
-        var bottom = ClientSize.Height - diameter;
-        using var outline = new GraphicsPath();
-        outline.AddArc(0, 0, diameter, diameter, 180, 90);
-        outline.AddArc(right, 0, diameter, diameter, 270, 90);
-        outline.AddArc(right, bottom, diameter, diameter, 0, 90);
-        outline.AddArc(0, bottom, diameter, diameter, 90, 90);
-        outline.CloseFigure();
-
-        var oldRegion = Region;
-        Region = new Region(outline);
-        oldRegion?.Dispose();
-    }
-
-    protected override void WndProc(ref Message message)
-    {
-        const int DisplayChange = 0x007E;
-        const int SettingChange = 0x001A;
-        base.WndProc(ref message);
-        if (Visible && message.Msg is DisplayChange or SettingChange)
-            PositionAboveClock();
-    }
-
-    private bool TryEnableDesktopAcrylic()
-    {
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621) || SystemInformation.HighContrast)
-            return false;
-
-        // A custom Win32 region prevents DWM from rounding the window.
-        var oldRegion = Region;
-        Region = null;
-        const int darkMode = 1;
-        const int rounded = 2;
-        _ = DwmSetWindowAttribute(Handle, DwmUseImmersiveDarkMode, darkMode, sizeof(int));
-        _ = DwmSetWindowAttribute(Handle, DwmWindowCornerPreference, rounded, sizeof(int));
-        if (DwmSetWindowAttribute(Handle, DwmSystemBackdropType, DesktopAcrylic, sizeof(int)) < 0 ||
-            DwmExtendFrameIntoClientArea(Handle, new FrameMargins(-1)) < 0)
-        {
-            Region = oldRegion;
-            return false;
-        }
-
-        oldRegion?.Dispose();
-        // The extended frame is visible through the black Win32 background and transparent WebView.
-        BackColor = Color.Black;
-        browser.DefaultBackgroundColor = Color.Transparent;
-        return true;
-    }
-
-    private async void LoadApp(object? sender, EventArgs e)
-    {
+        Loaded -= LoadApp;
         try
         {
             var root = AppContext.BaseDirectory;
@@ -209,14 +248,11 @@ public sealed class Form1 : Form
             _ = DrainBridgeOutputAsync(bridge.StandardOutput);
 
             var origin = JsonSerializer.Serialize(new Uri(url).GetLeftPart(UriPartial.Authority));
-            desktopAcrylic = TryEnableDesktopAcrylic();
-            var acrylic = desktopAcrylic ? "true" : "false";
             await browser.EnsureCoreWebView2Async();
             await browser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync($$"""
                 if (window === window.top && location.origin === {{origin}}) document.addEventListener('DOMContentLoaded', () => {
                     const root = document.documentElement;
                     root.setAttribute('data-native-panel', '');
-                    if ({{acrylic}}) root.setAttribute('data-desktop-acrylic', '');
                 }, { once: true });
                 """);
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -252,17 +288,29 @@ public sealed class Form1 : Form
 
                 if (text == "install-update")
                 {
-                    _ = ReleaseUpdater.InstallPending(ShowUpdateNotice, () =>
+                    CloseAfterAnimation(() =>
                     {
-                        reallyExit = true;
-                        trayIcon.Visible = false;
-                        Application.Exit();
+                        if (ReleaseUpdater.InstallPending(ShowUpdateNotice, () =>
+                        {
+                            reallyExit = true;
+                            Close();
+                        }))
+                            return;
+
+                        exitRequested = false;
+                        RestoreFromTray();
                     });
                     return;
                 }
             };
             browser.CoreWebView2.NavigationCompleted += (_, navigation) =>
             {
+                if (!panelReady)
+                {
+                    panelReady = true;
+                    if (panelRequested)
+                        AnimatePanel(1);
+                }
                 webPageReady = navigation.IsSuccess;
                 if (webPageReady && pendingUpdateNotice is not null)
                 {
@@ -282,7 +330,8 @@ public sealed class Form1 : Form
         catch (Exception ex)
         {
             try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "GreeControl-startup.log"), $"{DateTime.Now:O}{Environment.NewLine}{ex}{Environment.NewLine}"); } catch { }
-            MessageBox.Show(this, ex.Message, "Gree Control", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            if (closed) return;
+            System.Windows.MessageBox.Show(ex.Message, "Gree Control", MessageBoxButton.OK, MessageBoxImage.Error);
             reallyExit = true;
             trayIcon.Visible = false;
             Close();
@@ -291,7 +340,7 @@ public sealed class Form1 : Form
 
     private async Task CheckForUpdatesAsync()
     {
-        if (checkingUpdate || IsDisposed)
+        if (checkingUpdate || closed)
             return;
 
         checkingUpdate = true;
@@ -299,7 +348,7 @@ public sealed class Form1 : Form
         {
             await ReleaseUpdater.CheckForUpdateAsync((message, action, persistent) =>
             {
-                if (!IsDisposed)
+                if (!closed)
                     ShowUpdateNotice(message, action, persistent);
             });
         }
@@ -311,9 +360,9 @@ public sealed class Form1 : Form
 
     private void ShowUpdateNotice(string message, string? actionLabel = null, bool persistent = false)
     {
-        if (InvokeRequired)
+        if (!Dispatcher.CheckAccess())
         {
-            BeginInvoke(() => ShowUpdateNotice(message, actionLabel, persistent));
+            Dispatcher.BeginInvoke(() => ShowUpdateNotice(message, actionLabel, persistent));
             return;
         }
         if (!webPageReady || browser.CoreWebView2 is null)
